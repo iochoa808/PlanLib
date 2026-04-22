@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PlanLib — AI Planning Problem Library</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ base }}static/index.css" />
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a class="topbar-logo" href="{{ base }}">PlanLib</a>
+  </div>
+  <div class="topbar-nav">
+    <a href="{{ base }}problems/">Problems</a>
+    <a href="{{ base }}languages/">Languages</a>
+    <a href="{{ base }}ipc/">IPC</a>
+    <a href="{{ base }}tags/">Tags</a>
+    <a href="#about">About</a>
+    <a href="#contribute">Contribute</a>
+    <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-label">Planning Problem Library</div>
+  <h1 class="hero-title">A library for<br>AI planning benchmarks.</h1>
+  <p class="hero-body">PlanLib documents classical planning benchmark domains — their formal definitions, complexity results, domain files, and instances — in one citable, open, community-maintained place.</p>
+  <div class="hero-actions">
+    <a href="{{ base }}problems/" class="btn-primary">Browse problems</a>
+    <a href="#contribute" class="btn-ghost">Add a problem</a>
+  </div>
+</section>
+
+<!-- ── Stats ── -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value green">{{ stats.problems }}</div>
+    <div class="stat-label">Problems</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value green">{{ stats.domains }}</div>
+    <div class="stat-label">Domain variants</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value green">{{ stats.instances }}</div>
+    <div class="stat-label">Instances</div>
+  </div>
+</div>
+
+<!-- ── What is PlanLib ── -->
+<section class="section" id="about">
+  <div class="section-label">About</div>
+  <div class="section-title">What is PlanLib?</div>
+  <p class="section-body">
+    PlanLib is an open catalogue of AI planning benchmark domains, modelled after
+    <a href="https://www.csplib.org" target="_blank" rel="noopener" style="color:var(--accent);border-bottom:1px solid #3a4a10;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='#3a4a10'">CSPLib</a>
+    for constraint satisfaction. Each entry documents the formal definition, complexity
+    results, PDDL models, and benchmark instances of one planning domain. Problems are
+    citable by their stable <span class="code-inline">probNNN</span> identifier, and
+    contributions are open to anyone — no special tooling required.
+  </p>
+</section>
+
+<!-- ── Contribute ── -->
+<section class="section" id="contribute">
+  <div class="contribute">
+    <div>
+      <div class="section-label">Contribute</div>
+      <div class="section-title">Add a planning domain</div>
+      <p class="section-body" style="margin-bottom:24px">
+        Each problem lives in a folder with a few Markdown files —
+        <span class="code-inline">general.md</span>, <span class="code-inline">references.md</span>,
+        and a <span class="code-inline">domain.md</span> per variant.
+        The scaffold command fills in all the structure; you just fill in the content.
+        New entries are reviewed for correctness before being assigned a stable
+        <span class="code-inline">probNNN</span> identifier.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" class="btn-primary">View on GitHub ↗</a>
+        <a href="#" class="btn-ghost">Read the guide</a>
+      </div>
+    </div>
+    <div class="terminal">
+      <div class="terminal-title">Quick start</div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">git clone</span> <span class="t-arg">github.com/planlib/planlib</span></div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">python planlib_build.py new</span> <span class="t-arg">prob005-myslug</span></div>
+      <div class="t-comment"># fill in the generated Markdown files</div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">python planlib_build.py build</span> <span class="t-arg">--all</span></div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">gh pr create</span></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>PlanLib — AI Planning Problem Library</span>
+  <span><a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub</a> · <a href="#">Cite</a> · <a href="#">Contact</a></span>
+</footer>
+
+</body>
+</html>

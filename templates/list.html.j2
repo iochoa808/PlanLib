@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ page_title }} | PlanLib</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ base }}static/index.css" />
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a class="topbar-logo" href="{{ base }}">PlanLib</a>
+    {% for crumb in breadcrumb %}
+    <span class="topbar-sep">›</span>
+    {% if crumb.href %}<a href="{{ crumb.href }}">{{ crumb.label }}</a>{% else %}<span class="topbar-crumb">{{ crumb.label }}</span>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="topbar-nav">
+    <a href="{{ base }}problems/">Problems</a>
+    <a href="{{ base }}languages/">Languages</a>
+    <a href="{{ base }}ipc/">IPC</a>
+    <a href="{{ base }}tags/">Tags</a>
+    <a href="{{ base }}#about">About</a>
+    <a href="{{ base }}#contribute">Contribute</a>
+    <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<section class="hero" style="padding-top:48px;padding-bottom:40px">
+  <div class="hero-label">PlanLib</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,4vw,44px);margin-bottom:0">{{ page_title }}</h1>
+  {% if description %}<p class="hero-body" style="margin-top:14px;margin-bottom:0">{{ description }}</p>{% endif %}
+</section>
+
+<section class="section" style="padding-top:36px">
+
+  <div class="search-row">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <input id="search" type="text" placeholder="Search…" autocomplete="off" />
+    </div>
+
+    {% if all_ipc %}
+    <div class="dropdown" id="dd-ipc">
+      <div class="dropdown-btn" id="btn-ipc" onclick="toggleDropdown('dd-ipc')">
+        IPC edition
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="dropdown-menu" id="menu-ipc">
+        {% for ed in all_ipc %}
+        <div class="dropdown-item" data-group="ipc" data-value="{{ ed }}"><span class="check"></span>{{ ed }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if all_langs %}
+    <div class="dropdown" id="dd-lang">
+      <div class="dropdown-btn" id="btn-lang" onclick="toggleDropdown('dd-lang')">
+        Language
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="dropdown-menu" id="menu-lang">
+        {% for lang in all_langs %}
+        <div class="dropdown-item" data-group="lang" data-value="{{ lang }}"><span class="check"></span>{{ lang }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if tag_chips %}
+  <div class="tag-filters" id="tag-filters">
+    {% for chip in tag_chips %}
+    <span class="tf" data-tag="{{ chip.tag }}" data-style="{{ chip.style }}">{{ chip.tag }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="problem-list" id="problem-list">
+    {% for problem in items %}
+    {% set ns = namespace(disp=[]) %}
+    {% for t in problem.tags %}
+      {% if t not in ('Fully Observable', 'Deterministic') and ns.disp | length < 2 %}
+        {% set ns.disp = ns.disp + [t] %}
+      {% endif %}
+    {% endfor %}
+    {% set search_text = ([problem.id, problem.slug, problem.title or '', problem.subtitle or '',
+                           problem.tags | join(' '), problem.proposers | join(' ')]) | join(' ') | lower %}
+
+    <a class="problem-row"
+       href="{{ base }}problems/{{ problem.slug }}/"
+       data-tags="{{ problem.tags | join(',') }}"
+       data-ipc="{{ problem.ipc_editions | join(',') }}"
+       data-lang="{{ problem.languages | join(',') }}"
+       data-search="{{ search_text }}">
+      <span class="prob-id">{{ problem.id }}</span>
+      <div>
+        <div class="prob-title">{{ problem.title }}</div>
+        <div class="prob-sub">{{ problem.subtitle }}</div>
+      </div>
+      <div class="prob-tags">
+        {% for t in ns.disp %}
+        <span class="tag {{ t | tag_class }}">{{ t }}</span>
+        {% endfor %}
+        {% if problem.ipc_editions %}
+        <span class="tag tag-neutral">{{ problem.ipc_editions[0] }}</span>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="no-results" id="no-results">No problems match.</div>
+
+</section>
+
+<footer class="footer">
+  <span>PlanLib — AI Planning Problem Library</span>
+  <span><a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub</a> · <a href="#">Cite</a> · <a href="#">Contact</a></span>
+</footer>
+
+<script src="{{ base }}static/index.js"></script>
+</body>
+</html>
