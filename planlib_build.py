@@ -51,10 +51,11 @@ DEFAULT_PROBLEMS = SCRIPT_DIR / "problems"
 DEFAULT_TMPL     = SCRIPT_DIR / "templates"
 DEFAULT_STATIC   = SCRIPT_DIR / "static"
 DEFAULT_OUTPUT   = SCRIPT_DIR / "output"
-TEMPLATE         = "problem.html.j2"
-INDEX_TEMPLATE   = "index.html.j2"
-LIST_TEMPLATE    = "list.html.j2"
-GROUPED_TEMPLATE = "grouped_list.html.j2"
+TEMPLATE            = "problem.html.j2"
+INDEX_TEMPLATE      = "index.html.j2"
+LIST_TEMPLATE       = "list.html.j2"
+GROUPED_TEMPLATE    = "grouped_list.html.j2"
+CONTRIBUTE_TEMPLATE = "contribute.html.j2"
 
 # ── Tag colour helpers (used by both make_env and build_index) ────────────────
 _BLUE_TAGS  = frozenset({'Typed', 'ADL', 'FOND', 'Probabilistic', 'Stochastic', 'Partial'})
@@ -635,6 +636,16 @@ def make_env(template_dir: Path):
     return env
 
 
+def build_contribute(output_dir: Path, env) -> None:
+    """Render the contribute/submit form page."""
+    template = env.get_template(CONTRIBUTE_TEMPLATE)
+    html = template.render(base='../../')
+    out_dir = output_dir / 'contribute'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / 'index.html').write_text(html, encoding='utf-8')
+    print('  OK  contribute/index.html')
+
+
 def copy_static(static_src: Path, output_dir: Path) -> None:
     """Copy static/ assets to output/static/."""
     if not static_src.is_dir():
@@ -1091,6 +1102,9 @@ def main():
                     description=f"Problems tagged {g['label']}.",
                     base='../../',
                 )
+
+            # ── Contribute form ───────────────────────────────────────────────
+            build_contribute(output_dir, env)
         else:
             prob_dir = Path(args.prob_dir)
             if not prob_dir.is_dir():

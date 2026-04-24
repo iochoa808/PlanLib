@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Submit a Problem | PlanLib</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ base }}static/index.css" />
+<style>
+.wiz { max-width: 740px; margin: 0 auto; }
+
+/* Step tabs */
+.wiz-tabs {
+  display: flex; margin-bottom: 28px;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+}
+.wiz-tab {
+  flex: 1; padding: 9px 4px; text-align: center;
+  font-size: 10px; font-family: var(--mono); letter-spacing: .06em;
+  color: var(--muted); border-right: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; transition: background .12s, color .12s;
+}
+.wiz-tab:last-child { border-right: none; }
+.wiz-tab:hover:not(.active) { color: var(--text); }
+.wiz-tab.active { background: var(--accent); color: #000; font-weight: 600; }
+.wiz-tab.done { color: var(--accent); }
+
+/* Panels */
+.wiz-panel { display: none; }
+.wiz-panel.active { display: block; }
+.step-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.step-desc  { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+
+/* Inputs */
+.fg { margin-bottom: 18px; }
+.fl { display: block; font-size: 10px; font-family: var(--mono); letter-spacing: .08em; color: var(--accent); margin-bottom: 5px; }
+.req { color: #cc5500; }
+.fh { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.fi, .ft, .fs {
+  width: 100%; box-sizing: border-box;
+  background: #0d1500; border: 1px solid #253000; border-radius: 4px;
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  padding: 8px 10px; outline: none; transition: border-color .15s;
+}
+.fi:focus, .ft:focus, .fs:focus { border-color: var(--accent); }
+.ft { resize: vertical; min-height: 90px; }
+.fs option { background: #0d1500; }
+.frow  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Validation */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-5px); }
+  40%,80% { transform: translateX(5px); }
+}
+.field-error { border-color: #cc4400 !important; animation: shake .3s ease; }
+.err-msg { font-size: 11px; color: #cc4400; margin-top: 4px; display: none; }
+.err-msg.show { display: block; }
+
+/* Checkbox grid */
+.cg { display: flex; flex-wrap: wrap; gap: 8px; }
+.ci { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.ci input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; }
+.ci span { font-size: 12px; font-family: var(--mono); }
+
+/* Dynamic rows */
+.dyn { display: flex; flex-direction: column; gap: 8px; }
+.drow { display: flex; gap: 8px; align-items: flex-start; }
+.drow .fi { flex: 1; }
+.rm-btn {
+  background: none; border: 1px solid #333; border-radius: 4px;
+  color: var(--muted); font-size: 16px; width: 28px; height: 34px; min-width: 28px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  padding: 0; transition: border-color .15s, color .15s; line-height: 1;
+}
+.rm-btn:hover { border-color: #cc3300; color: #cc3300; }
+.add-btn {
+  display: inline-flex; align-items: center; gap: 6px; background: none;
+  border: 1px solid var(--border); border-radius: 4px; color: var(--accent);
+  font-size: 11px; font-family: var(--mono); letter-spacing: .06em;
+  padding: 6px 12px; cursor: pointer; margin-top: 8px; transition: border-color .15s;
+}
+.add-btn:hover { border-color: var(--accent); }
+
+/* Entry cards */
+.entry-card { border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 12px; }
+.entry-card-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.entry-card-lbl { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: .06em; }
+.entry-rm {
+  background: none; border: 1px solid #333; border-radius: 4px;
+  color: var(--muted); font-size: 12px; font-family: var(--mono);
+  padding: 3px 10px; cursor: pointer; transition: all .15s;
+}
+.entry-rm:hover { border-color: #cc3300; color: #cc3300; }
+.bibtex-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--muted); font-size: 11px; font-family: var(--mono);
+  letter-spacing: .06em; padding: 5px 14px; cursor: pointer; transition: all .15s;
+}
+.bibtex-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Section divider */
+.sep { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+
+/* Wizard nav */
+.wiz-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--border); }
+.wiz-ctr { font-size: 11px; font-family: var(--mono); color: var(--muted); }
+.wbtn { padding: 9px 22px; border-radius: 4px; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; cursor: pointer; transition: all .15s; }
+.wbtn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); }
+.wbtn-ghost:hover { border-color: var(--text); color: var(--text); }
+.wbtn-primary { background: var(--accent); border: 1px solid var(--accent); color: #000; font-weight: 600; }
+.wbtn-primary:hover { opacity: .85; }
+
+/* Output */
+.out-file { margin-bottom: 24px; }
+.out-hdr  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; }
+.out-path { font-family: var(--mono); font-size: 12px; color: var(--accent); word-break: break-all; }
+.dl-btn {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: 1px solid var(--accent); border-radius: 4px;
+  color: var(--accent); font-size: 11px; font-family: var(--mono);
+  letter-spacing: .06em; padding: 5px 12px; cursor: pointer; transition: all .15s;
+}
+.dl-btn:hover { background: var(--accent); color: #000; }
+.out-pre {
+  background: #060c00; border: 1px solid var(--border); border-radius: 4px;
+  padding: 14px 16px; font-size: 11px; font-family: var(--mono); line-height: 1.55;
+  overflow-x: auto; white-space: pre; color: var(--text); max-height: 280px; overflow-y: auto;
+}
+.zip-bar { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+.zip-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent); border: 1px solid var(--accent); border-radius: 4px;
+  color: #000; font-size: 12px; font-family: var(--mono); font-weight: 600;
+  letter-spacing: .06em; padding: 9px 20px; cursor: pointer; transition: opacity .15s;
+}
+.zip-btn:hover { opacity: .85; }
+.next-steps { background: #0a1800; border: 1px solid var(--border); border-radius: 6px; padding: 20px; margin-top: 24px; }
+.next-steps-lbl { font-size: 11px; font-family: var(--mono); color: var(--accent); letter-spacing: .06em; margin-bottom: 12px; }
+.next-steps p { font-size: 13px; color: var(--text); line-height: 1.8; margin: 0; }
+.ic { font-family: var(--mono); background: #1a2a00; padding: 1px 5px; border-radius: 3px; }
+.tbl-col-hdr { font-size: 10px; font-family: var(--mono); color: var(--muted); letter-spacing: .06em; padding: 0 2px; }
+.dom-section-lbl { font-size: 10px; font-family: var(--mono); color: var(--accent); letter-spacing: .06em; margin: 14px 0 6px; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a class="topbar-logo" href="{{ base }}">PlanLib</a>
+    <span class="topbar-sep">›</span>
+    <span class="topbar-crumb">Submit a Problem</span>
+  </div>
+  <div class="topbar-nav">
+    <a href="{{ base }}problems/">Problems</a>
+    <a href="{{ base }}languages/">Languages</a>
+    <a href="{{ base }}ipc/">IPC</a>
+    <a href="{{ base }}tags/">Tags</a>
+    <a href="{{ base }}#about">About</a>
+    <a href="{{ base }}contribute/">Contribute</a>
+    <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<section class="hero" style="padding-top:48px;padding-bottom:40px">
+  <div class="hero-label">PlanLib</div>
+  <h1 class="hero-title" style="font-size:clamp(28px,4vw,44px);margin-bottom:0">Submit a Problem</h1>
+  <p class="hero-body" style="margin-top:14px;margin-bottom:0">Fill in the form to generate the Markdown source files for a new planning problem. Download them, add to your fork, and open a pull request.</p>
+</section>
+
+<section class="section" style="padding-top:36px;padding-bottom:72px">
+<div class="wiz">
+
+  <!-- Step tabs -->
+  <div class="wiz-tabs">
+    <div class="wiz-tab active" onclick="tryGoTo(0)">Identity</div>
+    <div class="wiz-tab" onclick="tryGoTo(1)">Tags</div>
+    <div class="wiz-tab" onclick="tryGoTo(2)">Description</div>
+    <div class="wiz-tab" onclick="tryGoTo(3)">Variants</div>
+    <div class="wiz-tab" onclick="tryGoTo(4)">Domains</div>
+    <div class="wiz-tab" onclick="tryGoTo(5)">References</div>
+    <div class="wiz-tab" onclick="tryGoTo(6)">Download</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 0 — Identity -->
+  <div class="wiz-panel active" id="panel-0">
+    <div class="step-title">Problem Identity</div>
+    <div class="step-desc">Core metadata. A stable <span class="ic">probNNN</span> ID is assigned automatically when the pull request is merged — you don't need to pick one.</div>
+
+    <div class="fg">
+      <label class="fl">Title <span class="req">*</span></label>
+      <input class="fi" id="f-title" type="text" placeholder="Mystery" />
+      <div class="err-msg" id="err-f-title">Title is required.</div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Slug <span class="req">*</span></label>
+      <input class="fi" id="f-slug" type="text" placeholder="mystery" />
+      <div class="fh">URL-safe folder name — auto-filled from the title, but you can edit it.</div>
+      <div class="err-msg" id="err-f-slug">Slug is required.</div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Subtitle <span class="req">*</span></label>
+      <textarea class="ft" id="f-subtitle" rows="3" placeholder="One- or two-sentence description shown on the problem list…"></textarea>
+      <div class="err-msg" id="err-f-subtitle">Subtitle is required.</div>
+    </div>
+
+    <div class="frow">
+      <div class="fg">
+        <label class="fl">Category</label>
+        <select class="fs" id="f-category" onchange="toggleOther(this,'f-cat-other')">
+          <option>Classical</option><option>Temporal</option><option>Numeric</option>
+          <option>Probabilistic</option><option>HTN</option><option>Multi-Agent</option>
+          <option>Partially Observable</option><option value="Other">Other</option>
+        </select>
+        <input class="fi" id="f-cat-other" type="text" placeholder="Category name…" style="display:none;margin-top:6px" />
+      </div>
+      <div class="fg">
+        <label class="fl">Origin Year</label>
+        <input class="fi" id="f-origin-year" type="number" placeholder="1995" min="1950" max="2030" />
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Origin Reference</label>
+      <input class="fi" id="f-origin" type="text" placeholder="Kautz &amp; Selman, 1992" />
+      <div class="fh">Author and year of the publication that introduced this domain.</div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Proposers</label>
+      <input class="fi" id="f-proposers" type="text" placeholder="Henry Kautz, Bart Selman" />
+      <div class="fh">Comma-separated list of the original authors.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 1 — Tags -->
+  <div class="wiz-panel" id="panel-1">
+    <div class="step-title">Tags &amp; Classification</div>
+    <div class="step-desc">Check all that apply. Custom entries can be added at the bottom of each section.</div>
+
+    <div class="fg">
+      <label class="fl">Tags</label>
+      <div class="cg" id="tags-grid">
+        <label class="ci"><input type="checkbox" value="Classical" /><span>Classical</span></label>
+        <label class="ci"><input type="checkbox" value="Fully Observable" /><span>Fully Observable</span></label>
+        <label class="ci"><input type="checkbox" value="Deterministic" /><span>Deterministic</span></label>
+        <label class="ci"><input type="checkbox" value="Single Agent" /><span>Single Agent</span></label>
+        <label class="ci"><input type="checkbox" value="Multi-Agent" /><span>Multi-Agent</span></label>
+        <label class="ci"><input type="checkbox" value="STRIPS" /><span>STRIPS</span></label>
+        <label class="ci"><input type="checkbox" value="Typed" /><span>Typed</span></label>
+        <label class="ci"><input type="checkbox" value="Numeric" /><span>Numeric</span></label>
+        <label class="ci"><input type="checkbox" value="Temporal" /><span>Temporal</span></label>
+        <label class="ci"><input type="checkbox" value="Stochastic" /><span>Stochastic</span></label>
+        <label class="ci"><input type="checkbox" value="Partially Observable" /><span>Partially Observable</span></label>
+        <label class="ci"><input type="checkbox" value="Hierarchical" /><span>Hierarchical</span></label>
+        <label class="ci"><input type="checkbox" value="Transportation" /><span>Transportation</span></label>
+        <label class="ci"><input type="checkbox" value="Scheduling" /><span>Scheduling</span></label>
+        <label class="ci"><input type="checkbox" value="Stacking" /><span>Stacking</span></label>
+        <label class="ci"><input type="checkbox" value="Multi-Object" /><span>Multi-Object</span></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <input class="fi" id="tag-custom" type="text" placeholder="Custom tag…" style="max-width:200px" />
+        <button type="button" class="add-btn" onclick="addCustom('tags-grid','tag-custom')">+ Add</button>
+      </div>
+    </div>
+
+    <hr class="sep" />
+
+    <div class="fg">
+      <label class="fl">Languages</label>
+      <div class="cg" id="lang-grid">
+        <label class="ci"><input type="checkbox" value="PDDL 1.2" /><span>PDDL 1.2</span></label>
+        <label class="ci"><input type="checkbox" value="PDDL 2.1" /><span>PDDL 2.1</span></label>
+        <label class="ci"><input type="checkbox" value="PDDL 2.2" /><span>PDDL 2.2</span></label>
+        <label class="ci"><input type="checkbox" value="PDDL 3.0" /><span>PDDL 3.0</span></label>
+        <label class="ci"><input type="checkbox" value="PDDL 3.1" /><span>PDDL 3.1</span></label>
+        <label class="ci"><input type="checkbox" value="PPDDL" /><span>PPDDL</span></label>
+        <label class="ci"><input type="checkbox" value="RDDL" /><span>RDDL</span></label>
+        <label class="ci"><input type="checkbox" value="HDDL" /><span>HDDL</span></label>
+        <label class="ci"><input type="checkbox" value="MAPL" /><span>MAPL</span></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <input class="fi" id="lang-custom" type="text" placeholder="Custom language…" style="max-width:200px" />
+        <button type="button" class="add-btn" onclick="addCustom('lang-grid','lang-custom')">+ Add</button>
+      </div>
+    </div>
+
+    <hr class="sep" />
+
+    <div class="fg">
+      <label class="fl">IPC Editions</label>
+      <div class="cg" id="ipc-grid">
+        <label class="ci"><input type="checkbox" value="IPC 1998" /><span>IPC 1998</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2000" /><span>IPC 2000</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2002" /><span>IPC 2002</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2004" /><span>IPC 2004</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2006" /><span>IPC 2006</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2008" /><span>IPC 2008</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2011" /><span>IPC 2011</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2014" /><span>IPC 2014</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2018" /><span>IPC 2018</span></label>
+        <label class="ci"><input type="checkbox" value="IPC 2023" /><span>IPC 2023</span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 2 — Description -->
+  <div class="wiz-panel" id="panel-2">
+    <div class="step-title">Description &amp; History</div>
+    <div class="step-desc">Write the main description and historical context. Plain text or Markdown. Cite references with <span class="ic">[Key]</span> notation.</div>
+
+    <div class="fg">
+      <label class="fl">Description <span class="req">*</span></label>
+      <textarea class="ft" id="f-desc" rows="9" placeholder="Describe the planning problem: the physical setup, the goal, what makes it interesting or challenging…"></textarea>
+      <div class="err-msg" id="err-f-desc">Description is required.</div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">History</label>
+      <textarea class="ft" id="f-history" rows="5" placeholder="When and where was this domain introduced? Which planners used it? Major milestones…"></textarea>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 3 — Variants & Complexity -->
+  <div class="wiz-panel" id="panel-3">
+    <div class="step-title">Variants &amp; Complexity</div>
+    <div class="step-desc">List known variants and, optionally, computational complexity results.</div>
+
+    <div class="fg">
+      <label class="fl">Variants</label>
+      <div class="fh" style="margin-bottom:10px">Link to a domain card with <span class="ic">#domain-key</span> or to an external URL.</div>
+      <div class="dyn" id="variants-list"></div>
+      <button type="button" class="add-btn" onclick="addVariant()">+ Add variant</button>
+    </div>
+
+    <hr class="sep" />
+
+    <div class="fg">
+      <label class="fl">Complexity Results</label>
+      <div class="fh" style="margin-bottom:10px">Known computational complexity. Class: <span class="ic">hard</span> / <span class="ic">easy</span> / <span class="ic">open</span></div>
+      <div id="complexity-list"></div>
+      <button type="button" class="add-btn" onclick="addComplexityRow()">+ Add result</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 4 — Domains -->
+  <div class="wiz-panel" id="panel-4">
+    <div class="step-title">Domains</div>
+    <div class="step-desc">Add at least one PDDL domain variant. Each generates a <span class="ic">domains/&lt;slug&gt;/domain.md</span> file, where the slug is derived from the domain title.</div>
+
+    <div id="domains-list"></div>
+    <button type="button" class="add-btn" onclick="addDomain()">+ Add domain</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 5 — References -->
+  <div class="wiz-panel" id="panel-5">
+    <div class="step-title">References</div>
+    <div class="step-desc">Add the papers cited in your description. Fill in the fields, then click <strong style="color:var(--text)">→ Generate BibTeX</strong> to auto-fill the entry for that reference.</div>
+
+    <div id="refs-list"></div>
+    <button type="button" class="add-btn" onclick="addRef()">+ Add reference</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════ STEP 6 — Download -->
+  <div class="wiz-panel" id="panel-6">
+    <div class="step-title">Generated Files</div>
+    <div class="step-desc">Extract the ZIP into a new folder inside <span class="ic">problems/</span> in your fork, then open a pull request.</div>
+
+    <div class="zip-bar">
+      <button class="zip-btn" onclick="downloadZip()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 6l3 3 3-3M1 10h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Download all as ZIP
+      </button>
+    </div>
+
+    <div id="output-area"></div>
+
+    <div class="next-steps">
+      <div class="next-steps-lbl">NEXT STEPS</div>
+      <p>
+        1. Clone or fork the <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" style="color:var(--accent)">planlib repository</a>.<br>
+        2. Inside <span class="ic">problems/</span>, create a folder named <span id="folder-hint" class="ic">probNNN-slug/</span> (the <span class="ic">probNNN</span> prefix will be assigned by a maintainer after review).<br>
+        3. Extract the ZIP contents directly into that folder — you should end up with <span class="ic">general.md</span>, <span class="ic">references.md</span>, and a <span class="ic">domains/</span> subfolder.<br>
+        4. Run <span class="ic">python planlib_build.py build --all</span> locally to verify the build passes.<br>
+        5. Open a pull request — a maintainer will review and assign the stable <span class="ic">probNNN</span> identifier.
+      </p>
+    </div>
+  </div>
+
+  <!-- Wizard navigation -->
+  <div class="wiz-nav">
+    <button class="wbtn wbtn-ghost" id="btn-prev" onclick="wizPrev()" style="visibility:hidden">← Back</button>
+    <span class="wiz-ctr" id="wiz-ctr">Step 1 of 7</span>
+    <button class="wbtn wbtn-primary" id="btn-next" onclick="wizNext()">Next →</button>
+  </div>
+
+</div>
+</section>
+
+<footer class="footer">
+  <span>PlanLib — AI Planning Problem Library</span>
+  <span><a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub</a> · <a href="#">Cite</a> · <a href="#">Contact</a></span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const NSTEPS = 7;
+let cur = 0;
+
+const REQUIRED = {
+  0: [['f-title','Title'], ['f-slug','Slug'], ['f-subtitle','Subtitle']],
+  2: [['f-desc','Description']],
+};
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function validateStep(n) {
+  const fields = REQUIRED[n] || [];
+  let ok = true;
+  fields.forEach(([id]) => {
+    const el = document.getElementById(id);
+    if (!el || !el.value.trim()) { markError(el, id); ok = false; }
+  });
+  return ok;
+}
+
+function markError(el, id) {
+  if (!el) return;
+  el.classList.add('field-error');
+  const msg = id ? document.getElementById('err-' + id) : null;
+  if (msg) msg.classList.add('show');
+  el.addEventListener('input', () => {
+    el.classList.remove('field-error');
+    if (msg) msg.classList.remove('show');
+  }, { once: true });
+  el.focus();
+}
+
+// ── Wizard navigation ─────────────────────────────────────────────────────────
+function wizGo(n) {
+  document.querySelectorAll('.wiz-panel').forEach((p, i) => p.classList.toggle('active', i === n));
+  document.querySelectorAll('.wiz-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === n);
+    t.classList.toggle('done', i < n);
+  });
+  document.getElementById('btn-prev').style.visibility = n === 0 ? 'hidden' : 'visible';
+  const nb = document.getElementById('btn-next');
+  if (n === NSTEPS - 1) { nb.textContent = '↺ Regenerate'; nb.onclick = renderOutput; }
+  else                  { nb.textContent = 'Next →';       nb.onclick = wizNext; }
+  document.getElementById('wiz-ctr').textContent = `Step ${n + 1} of ${NSTEPS}`;
+  cur = n;
+  if (n === NSTEPS - 1) renderOutput();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function wizNext() {
+  if (!validateStep(cur)) return;
+  if (cur < NSTEPS - 1) wizGo(cur + 1);
+}
+function wizPrev() { if (cur > 0) wizGo(cur - 1); }
+
+function tryGoTo(n) {
+  if (n === cur) return;
+  if (n > cur && !validateStep(cur)) return;
+  wizGo(n);
+}
+
+// ── Auto-slug ─────────────────────────────────────────────────────────────────
+document.getElementById('f-title').addEventListener('input', function () {
+  document.getElementById('f-slug').value =
+    this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+});
+
+// ── "Other" reveal ────────────────────────────────────────────────────────────
+function toggleOther(sel, targetId) {
+  const inp = document.getElementById(targetId);
+  if (!inp) return;
+  const show = sel.value === 'Other';
+  inp.style.display = show ? '' : 'none';
+  if (show) inp.focus();
+}
+
+// ── Checkbox grids ────────────────────────────────────────────────────────────
+function addCustom(gridId, inputId) {
+  const inp = document.getElementById(inputId);
+  const v = inp.value.trim(); if (!v) return;
+  const lbl = document.createElement('label');
+  lbl.className = 'ci';
+  lbl.innerHTML = `<input type="checkbox" value="${esc(v)}" checked /><span>${esc(v)}</span>`;
+  document.getElementById(gridId).appendChild(lbl);
+  inp.value = '';
+}
+function checked(gridId) {
+  return [...document.querySelectorAll(`#${gridId} input[type=checkbox]:checked`)].map(c => c.value);
+}
+
+// ── Variants ──────────────────────────────────────────────────────────────────
+let vi = 0;
+function addVariant() {
+  const i = vi++;
+  const d = document.createElement('div');
+  d.className = 'drow'; d.id = `var-${i}`;
+  d.innerHTML = `
+    <input class="fi" id="vl-${i}" type="text" placeholder="Variant name" style="flex:2" />
+    <input class="fi" id="vh-${i}" type="text" placeholder="Link: #domain-key or https://…" style="flex:3" />
+    <button type="button" class="rm-btn" onclick="document.getElementById('var-${i}').remove()">×</button>`;
+  document.getElementById('variants-list').appendChild(d);
+}
+function getVariants() {
+  return [...document.querySelectorAll('#variants-list .drow')].map(r => {
+    const i = r.id.replace('var-', '');
+    return { label: val(`vl-${i}`), href: val(`vh-${i}`) };
+  }).filter(v => v.label);
+}
+
+// ── Complexity ────────────────────────────────────────────────────────────────
+let cxi = 0;
+function addComplexityRow() {
+  const i = cxi++;
+  const d = document.createElement('div');
+  d.className = 'drow'; d.id = `cmp-${i}`;
+  d.innerHTML = `
+    <input class="fi" id="cp-${i}" type="text" placeholder="Problem" style="flex:3" />
+    <input class="fi" id="cq-${i}" type="text" placeholder="Qualifier" style="flex:2" />
+    <input class="fi" id="cr-${i}" type="text" placeholder="Result" style="flex:2" />
+    <select class="fs" id="cc-${i}" style="flex:1;padding:8px 6px">
+      <option value="hard">hard</option><option value="easy">easy</option><option value="open">open</option>
+    </select>
+    <button type="button" class="rm-btn" onclick="document.getElementById('cmp-${i}').remove()">×</button>`;
+  document.getElementById('complexity-list').appendChild(d);
+}
+function getComplexity() {
+  return [...document.querySelectorAll('#complexity-list .drow')].map(r => {
+    const i = r.id.replace('cmp-', '');
+    return { problem: val(`cp-${i}`), qualifier: val(`cq-${i}`), result: val(`cr-${i}`), cls: val(`cc-${i}`) };
+  }).filter(r => r.problem);
+}
+
+// ── Domains ───────────────────────────────────────────────────────────────────
+function slugify(s) {
+  return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'domain';
+}
+
+let di = 0;
+function addDomain() {
+  const i = di++;
+  const d = document.createElement('div');
+  d.className = 'entry-card'; d.id = `dom-${i}`;
+  d.innerHTML = `
+    <div class="entry-card-hdr">
+      <span class="entry-card-lbl">Domain</span>
+      <button type="button" class="entry-rm" onclick="document.getElementById('dom-${i}').remove()">Remove</button>
+    </div>
+    <div class="fg">
+      <label class="fl">Domain Title <span class="req">*</span></label>
+      <input class="fi" id="dt-${i}" type="text" placeholder="PDDL Domain (base)" />
+      <div class="fh">The folder slug is derived from this — e.g. "PDDL Domain (base)" → <span class="ic">domains/pddl-domain-base/</span></div>
+    </div>
+    <div class="frow" style="margin-top:10px">
+      <div class="fg" style="margin:0">
+        <label class="fl">Language</label>
+        <select class="fs" id="dl-${i}" onchange="toggleOther(this,'dl-other-${i}')">
+          <option>PDDL 1.2</option><option selected>PDDL 2.1</option><option>PDDL 2.2</option>
+          <option>PDDL 3.0</option><option>PDDL 3.1</option><option>PPDDL</option>
+          <option>RDDL</option><option>HDDL</option><option value="Other">Other</option>
+        </select>
+        <input class="fi" id="dl-other-${i}" type="text" placeholder="Language name…" style="display:none;margin-top:6px" />
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Source Reference Key</label>
+        <input class="fi" id="ds-${i}" type="text" placeholder="Author99" />
+      </div>
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="fl">Notes</label>
+      <textarea class="ft" id="dn-${i}" rows="2" placeholder="Brief notes about this variant…"></textarea>
+    </div>
+    <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;margin:18px 0 8px">
+      FORMAL SECTIONS — optional, can also be edited in the downloaded file</div>
+    <div class="fg">
+      <label class="fl">State Space</label>
+      <textarea class="ft" id="dss-${i}" rows="2" placeholder="Describe the state space…"></textarea>
+    </div>
+    <datalist id="type-opts-${i}"><option value="object"></datalist>
+    <div class="dom-section-lbl">TYPES</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;margin-bottom:4px">
+      <span class="tbl-col-hdr">name</span><span class="tbl-col-hdr">parent type</span><span></span>
+    </div>
+    <div id="type-list-${i}"></div>
+    <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:14px" onclick="addType(${i})">+ Add type</button>
+    <div class="dom-section-lbl">OBJECTS</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;margin-bottom:4px">
+      <span class="tbl-col-hdr">name</span><span class="tbl-col-hdr">type</span><span></span>
+    </div>
+    <div id="obj-list-${i}"></div>
+    <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:14px" onclick="addObject(${i})">+ Add object</button>
+    <div class="dom-section-lbl">PREDICATES</div>
+    <div style="display:grid;grid-template-columns:1.2fr 1.5fr 2fr 28px;gap:6px;margin-bottom:4px">
+      <span class="tbl-col-hdr">name</span><span class="tbl-col-hdr">parameters</span><span class="tbl-col-hdr">description</span><span></span>
+    </div>
+    <div id="pred-list-${i}"></div>
+    <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:14px" onclick="addPredicate(${i})">+ Add predicate</button>
+    <div class="dom-section-lbl">ACTIONS</div>
+    <div id="act-list-${i}"></div>
+    <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:10px" onclick="addAction(${i})">+ Add action</button>
+    <div class="fg">
+      <label class="fl">Goal</label>
+      <textarea class="ft" id="dg-${i}" rows="2" placeholder="Describe the goal condition…"></textarea>
+    </div>
+    <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;margin:14px 0 8px">INSTANCES</div>
+    <div id="inst-list-${i}"></div>
+    <button type="button" class="add-btn" style="margin-top:4px" onclick="addInstance(${i})">+ Add instance</button>`;
+  document.getElementById('domains-list').appendChild(d);
+}
+
+// ── Instances (per domain) ────────────────────────────────────────────────────
+function syncInstFile(domIdx, idx) {
+  const nameEl = document.getElementById(`in-name-${domIdx}-${idx}`);
+  const fileEl = document.getElementById(`in-file-${domIdx}-${idx}`);
+  const slug = (nameEl.value.trim()).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (slug) fileEl.value = slug + '.pddl';
+}
+
+let ii = 0;
+function addInstance(domIdx) {
+  const idx = ii++;
+  const container = document.getElementById(`inst-list-${domIdx}`);
+  const d = document.createElement('div');
+  d.id = `inst-${domIdx}-${idx}`;
+  d.style.cssText = 'border:1px solid #1a2800;border-radius:4px;padding:8px;margin-bottom:6px';
+  d.innerHTML = `
+    <div style="display:grid;grid-template-columns:2fr .7fr .7fr 2fr 28px;gap:6px;margin-bottom:6px">
+      <input class="fi" id="in-name-${domIdx}-${idx}" type="text" placeholder="instance name" style="font-size:12px;padding:6px 8px" oninput="syncInstFile(${domIdx},${idx})" />
+      <input class="fi" id="in-n-${domIdx}-${idx}"    type="text" placeholder="n"    style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="in-k-${domIdx}-${idx}"    type="text" placeholder="k*"   style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="in-st-${domIdx}-${idx}"   type="text" placeholder="status" style="font-size:12px;padding:6px 8px" />
+      <button type="button" class="rm-btn" onclick="document.getElementById('inst-${domIdx}-${idx}').remove()">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1.5fr 3fr;gap:6px">
+      <input class="fi" id="in-src-${domIdx}-${idx}"  type="text" placeholder="source ref" style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="in-file-${domIdx}-${idx}" type="text" placeholder="instance-01.pddl" style="font-size:12px;padding:6px 8px" />
+    </div>`;
+  container.appendChild(d);
+}
+
+function getInstances(domIdx) {
+  const container = document.getElementById(`inst-list-${domIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const idx = r.id.replace(`inst-${domIdx}-`, '');
+    return {
+      name:   val(`in-name-${domIdx}-${idx}`),
+      n:      val(`in-n-${domIdx}-${idx}`)   || '—',
+      k:      val(`in-k-${domIdx}-${idx}`)   || '—',
+      status: val(`in-st-${domIdx}-${idx}`)  || 'unknown',
+      source: val(`in-src-${domIdx}-${idx}`),
+      file:   (() => { const f = val(`in-file-${domIdx}-${idx}`); return f ? 'instances/' + f : ''; })(),
+    };
+  }).filter(r => r.name);
+}
+
+function getDomains() {
+  return [...document.querySelectorAll('#domains-list .entry-card')].map(r => {
+    const i = r.id.replace('dom-', '');
+    const langSel = document.getElementById(`dl-${i}`).value;
+    const lang = langSel === 'Other' ? (val(`dl-other-${i}`) || 'Other') : langSel;
+    const title = val(`dt-${i}`);
+    return { key: slugify(title), title, lang,
+             src: val(`ds-${i}`), notes: val(`dn-${i}`), ss: val(`dss-${i}`),
+             types: getTypes(i), objects: getObjects(i), goal: val(`dg-${i}`),
+             predicates: getPredicates(i), actions: getActions(i),
+             instances: getInstances(i) };
+  }).filter(d => d.title);
+}
+
+// ── Types (per domain) ───────────────────────────────────────────────────────
+let tyi = 0;
+function addType(domIdx) {
+  const idx = tyi++;
+  const container = document.getElementById(`type-list-${domIdx}`);
+  const d = document.createElement('div');
+  d.className = 'drow'; d.id = `ty-${domIdx}-${idx}`;
+  d.innerHTML = `
+    <input class="fi" id="ty-name-${domIdx}-${idx}" type="text" placeholder="location" style="font-size:12px;padding:6px 8px" oninput="refreshTypeOpts(${domIdx})" />
+    <input class="fi" id="ty-par-${domIdx}-${idx}"  type="text" placeholder="object"   list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
+    <button type="button" class="rm-btn" onclick="document.getElementById('ty-${domIdx}-${idx}').remove();refreshTypeOpts(${domIdx})">×</button>`;
+  container.appendChild(d);
+}
+function getTypes(domIdx) {
+  const container = document.getElementById(`type-list-${domIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const idx = r.id.replace(`ty-${domIdx}-`, '');
+    return { name: val(`ty-name-${domIdx}-${idx}`), parent: val(`ty-par-${domIdx}-${idx}`) || 'object' };
+  }).filter(r => r.name);
+}
+function refreshTypeOpts(domIdx) {
+  const dl = document.getElementById(`type-opts-${domIdx}`);
+  if (!dl) return;
+  dl.innerHTML = '<option value="object">' + getTypes(domIdx).map(t => `<option value="${t.name}">`).join('');
+}
+
+// ── Objects (per domain) ──────────────────────────────────────────────────────
+let obi = 0;
+function addObject(domIdx) {
+  const idx = obi++;
+  const container = document.getElementById(`obj-list-${domIdx}`);
+  const d = document.createElement('div');
+  d.className = 'drow'; d.id = `ob-${domIdx}-${idx}`;
+  d.innerHTML = `
+    <input class="fi" id="ob-name-${domIdx}-${idx}" type="text" placeholder="city1"    style="font-size:12px;padding:6px 8px" />
+    <input class="fi" id="ob-type-${domIdx}-${idx}" type="text" placeholder="location" list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
+    <button type="button" class="rm-btn" onclick="document.getElementById('ob-${domIdx}-${idx}').remove()">×</button>`;
+  container.appendChild(d);
+}
+function getObjects(domIdx) {
+  const container = document.getElementById(`obj-list-${domIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const idx = r.id.replace(`ob-${domIdx}-`, '');
+    return { name: val(`ob-name-${domIdx}-${idx}`), type: val(`ob-type-${domIdx}-${idx}`) };
+  }).filter(r => r.name);
+}
+
+// ── Predicates (per domain) ───────────────────────────────────────────────────
+let pi = 0;
+function addPredicate(domIdx) {
+  const idx = pi++;
+  const container = document.getElementById(`pred-list-${domIdx}`);
+  const d = document.createElement('div');
+  d.style.cssText = 'display:grid;grid-template-columns:1.2fr 1.5fr 2fr 28px;gap:6px;margin-bottom:6px';
+  d.id = `pred-${domIdx}-${idx}`;
+  d.innerHTML = `
+    <input class="fi" id="pn-${domIdx}-${idx}" type="text" placeholder="at"              style="font-size:12px;padding:6px 8px" />
+    <input class="fi" id="pp-${domIdx}-${idx}" type="text" placeholder="?obj - location" list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
+    <input class="fi" id="pd-${domIdx}-${idx}" type="text" placeholder="description"     style="font-size:12px;padding:6px 8px" />
+    <button type="button" class="rm-btn" onclick="document.getElementById('pred-${domIdx}-${idx}').remove()">×</button>`;
+  container.appendChild(d);
+}
+function getPredicates(domIdx) {
+  const container = document.getElementById(`pred-list-${domIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const idx = r.id.replace(`pred-${domIdx}-`, '');
+    const name = val(`pn-${domIdx}-${idx}`);
+    const params = val(`pp-${domIdx}-${idx}`);
+    return { name: params ? `${name}(${params})` : name, desc: val(`pd-${domIdx}-${idx}`) };
+  }).filter(r => r.name);
+}
+
+// ── Actions (per domain) ──────────────────────────────────────────────────────
+let aci = 0;
+function addAction(domIdx) {
+  const idx = aci++;
+  const container = document.getElementById(`act-list-${domIdx}`);
+  const d = document.createElement('div');
+  d.id = `act-${domIdx}-${idx}`;
+  d.style.cssText = 'border:1px solid #1a2800;border-radius:4px;padding:8px;margin-bottom:8px';
+  d.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1.2fr 1.5fr 28px;gap:6px;margin-bottom:8px">
+      <input class="fi" id="an-${domIdx}-${idx}" type="text" placeholder="move"              style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="ap-${domIdx}-${idx}" type="text" placeholder="?from ?to - loc"   list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="ad-${domIdx}-${idx}" type="text" placeholder="short description" style="font-size:12px;padding:6px 8px" />
+      <button type="button" class="rm-btn" onclick="document.getElementById('act-${domIdx}-${idx}').remove()">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div>
+        <div class="tbl-col-hdr" style="margin-bottom:4px">preconditions</div>
+        <textarea class="ft" id="apc-${domIdx}-${idx}" rows="3" placeholder="(and (at ?x ?from))" style="font-size:11px;min-height:56px"></textarea>
+      </div>
+      <div>
+        <div class="tbl-col-hdr" style="margin-bottom:4px">add effects</div>
+        <textarea class="ft" id="aae-${domIdx}-${idx}" rows="3" placeholder="(at ?x ?to)" style="font-size:11px;min-height:56px"></textarea>
+      </div>
+      <div>
+        <div class="tbl-col-hdr" style="margin-bottom:4px">del effects</div>
+        <textarea class="ft" id="ade-${domIdx}-${idx}" rows="3" placeholder="(at ?x ?from)" style="font-size:11px;min-height:56px"></textarea>
+      </div>
+    </div>`;
+  container.appendChild(d);
+}
+function getActions(domIdx) {
+  const container = document.getElementById(`act-list-${domIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const idx = r.id.replace(`act-${domIdx}-`, '');
+    const name = val(`an-${domIdx}-${idx}`);
+    const params = val(`ap-${domIdx}-${idx}`);
+    return {
+      name:   params ? `${name}(${params})` : name,
+      desc:   val(`ad-${domIdx}-${idx}`),
+      preconditions: document.getElementById(`apc-${domIdx}-${idx}`)?.value?.trim() || '',
+      add_effects:   document.getElementById(`aae-${domIdx}-${idx}`)?.value?.trim() || '',
+      del_effects:   document.getElementById(`ade-${domIdx}-${idx}`)?.value?.trim() || '',
+    };
+  }).filter(r => r.name);
+}
+
+// ── References ────────────────────────────────────────────────────────────────
+let ri = 0;
+function addRef() {
+  const i = ri++;
+  const d = document.createElement('div');
+  d.className = 'entry-card'; d.id = `ref-${i}`;
+  d.innerHTML = `
+    <div class="entry-card-hdr">
+      <span class="entry-card-lbl">Reference</span>
+      <button type="button" class="entry-rm" onclick="document.getElementById('ref-${i}').remove()">Remove</button>
+    </div>
+    <div class="frow">
+      <div class="fg" style="margin:0">
+        <label class="fl">Key <span class="req">*</span></label>
+        <input class="fi" id="rk-${i}" type="text" placeholder="Author99" />
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">URL</label>
+        <input class="fi" id="ru-${i}" type="text" placeholder="https://doi.org/…" />
+      </div>
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="fl">Title <span class="req">*</span></label>
+      <input class="fi" id="rt-${i}" type="text" placeholder="Full paper title" />
+    </div>
+    <div class="frow" style="margin-top:10px">
+      <div class="fg" style="margin:0">
+        <label class="fl">Authors</label>
+        <input class="fi" id="ra-${i}" type="text" placeholder="First Author, Second Author" />
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Venue</label>
+        <input class="fi" id="rv-${i}" type="text" placeholder="Proc. AAAI-99, pp. …" />
+      </div>
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="fl">Note</label>
+      <input class="fi" id="rn-${i}" type="text" placeholder="Optional note" />
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0 12px" />
+    <div class="fg" style="margin:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label class="fl" style="margin:0">BibTeX entry</label>
+        <button type="button" class="bibtex-btn" id="bib-btn-${i}" onclick="refToBibtex(${i})">→ Generate BibTeX</button>
+      </div>
+      <textarea class="ft" id="rb-${i}" rows="6" placeholder="Click → Generate BibTeX to auto-fill, or paste manually."></textarea>
+    </div>`;
+  document.getElementById('refs-list').appendChild(d);
+}
+
+function getRefs() {
+  return [...document.querySelectorAll('#refs-list .entry-card')].map(r => {
+    const i = r.id.replace('ref-', '');
+    return { key: val(`rk-${i}`), title: val(`rt-${i}`), authors: val(`ra-${i}`),
+             venue: val(`rv-${i}`), url: val(`ru-${i}`), note: val(`rn-${i}`),
+             bibtex: val(`rb-${i}`) };
+  }).filter(r => r.key);
+}
+
+// Generate BibTeX and write it into that card's own textarea (replacing, not appending)
+function refToBibtex(i) {
+  const key   = val(`rk-${i}`);
+  const title = val(`rt-${i}`);
+  if (!key)   { markError(document.getElementById(`rk-${i}`), null); return; }
+  if (!title) { markError(document.getElementById(`rt-${i}`), null); return; }
+
+  const authors = val(`ra-${i}`);
+  const venue   = val(`rv-${i}`);
+
+  const yearM = venue.match(/\b(19|20)\d{2}\b/);
+  const year  = yearM ? yearM[0] : 'YYYY';
+
+  const isJournal = /\bjournal\b|JAIR|AIJ|\bArtificial Intelligence\b/i.test(venue);
+  const isThesis  = /\bthesis\b|\bPhD\b|\bdissertation\b/i.test(venue);
+  const type = isThesis ? 'phdthesis' : (isJournal ? 'article' : 'inproceedings');
+
+  const authFmt = authors.replace(/,\s+(?=[A-Z])/g, ' and ');
+
+  let entry = `@${type}{${key},\n`;
+  entry += `  title     = {${title}},\n`;
+  if (authors) entry += `  author    = {${authFmt}},\n`;
+  if (type === 'phdthesis')       entry += `  school    = {${venue.split(',')[0] || 'TODO'}},\n`;
+  else if (type === 'article')    entry += `  journal   = {${venue.split(',')[0] || 'TODO'}},\n`;
+  else                            entry += `  booktitle = {${venue.split(',')[0] || 'TODO'}},\n`;
+  entry += `  year      = {${year}},\n}`;
+
+  document.getElementById(`rb-${i}`).value = entry;
+
+  const btn = document.getElementById(`bib-btn-${i}`);
+  btn.textContent = '✓ Generated';
+  btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)';
+  setTimeout(() => {
+    btn.textContent = '→ Generate BibTeX';
+    btn.style.borderColor = ''; btn.style.color = '';
+  }, 1800);
+}
+
+// ── Markdown generators ───────────────────────────────────────────────────────
+function yamlList(arr) {
+  return arr.length === 0 ? '[]' : '[' + arr.map(v => JSON.stringify(v)).join(', ') + ']';
+}
+
+function genGeneral() {
+  const slug       = val('f-slug') || 'slug';
+  const title      = val('f-title') || 'Untitled';
+  const subtitle   = val('f-subtitle');
+  const catSel     = document.getElementById('f-category').value;
+  const category   = catSel === 'Other' ? (val('f-cat-other') || 'Other') : catSel;
+  const originYear = val('f-origin-year');
+  const origin     = val('f-origin');
+  const proposers  = val('f-proposers').split(',').map(s => s.trim()).filter(Boolean);
+  const tags       = checked('tags-grid');
+  const langs      = checked('lang-grid');
+  const ipc        = checked('ipc-grid');
+  const desc       = val('f-desc');
+  const history    = val('f-history');
+  const variants   = getVariants();
+  const complexity = getComplexity();
+  const today      = new Date().toISOString().slice(0, 10);
+
+  let o = `---\nslug: ${slug}\ntitle: ${title}\n`;
+  if (subtitle)   o += `subtitle: ${JSON.stringify(subtitle)}\n`;
+  o += `proposers: ${yamlList(proposers)}\n`;
+  if (origin)     o += `origin: ${JSON.stringify(origin)}\n`;
+  if (originYear) o += `origin_year: ${originYear}\n`;
+  o += `last_updated: "${today}"\ncategory: ${category}\n`;
+  o += `tags: ${yamlList(tags)}\nlanguages: ${yamlList(langs)}\nipc_editions: ${yamlList(ipc)}\n---\n\n`;
+  o += `## Description\n\n${desc || '<!-- TODO -->'}\n\n`;
+  if (history) o += `## History\n\n${history}\n\n`;
+  if (variants.length) {
+    o += `## Variants\n\n`;
+    variants.forEach(v => { o += v.href ? `- [${v.label}](${v.href})\n` : `- ${v.label}\n`; });
+    o += '\n';
+  }
+  if (complexity.length) {
+    o += `## Complexity\n\n| Problem | Qualifier | Result | Class |\n|---|---|---|---|\n`;
+    complexity.forEach(r => { o += `| ${r.problem} | ${r.qualifier} | ${r.result} | ${r.cls} |\n`; });
+    o += '\n';
+  }
+  return o.trimEnd() + '\n';
+}
+
+function genReferences() {
+  const refs = getRefs();
+  if (!refs.length) return null;
+
+  let o = `## References\n\n`;
+  refs.forEach(r => {
+    o += `[${r.key}]: ${r.title}\n`;
+    if (r.authors) o += `authors: ${r.authors}\n`;
+    if (r.venue)   o += `venue: ${r.venue}\n`;
+    if (r.url)     o += `url: ${r.url}\n`;
+    if (r.note)    o += `note: ${r.note}\n`;
+    o += '\n';
+  });
+
+  const bibtexEntries = refs.map(r => r.bibtex).filter(Boolean);
+  if (bibtexEntries.length) {
+    o += `## BibTeX\n\n\`\`\`bibtex\n${bibtexEntries.join('\n\n')}\n\`\`\`\n`;
+  }
+  return o.trimEnd() + '\n';
+}
+
+function genDomain(d) {
+  let o = `---\ntitle: ${JSON.stringify(d.title || 'Untitled')}\nlanguage: ${d.lang}\n`;
+  if (d.src)   o += `source: ${d.src}\n`;
+  if (d.notes) o += `notes: ${JSON.stringify(d.notes)}\n`;
+  o += `---\n\n`;
+  if (d.ss) o += `## State Space\n\n${d.ss}\n\n`;
+  if (d.types && d.types.length) {
+    o += `## Types\n\n| name | parent |\n|---|---|\n`;
+    d.types.forEach(t => { o += `| ${t.name} | ${t.parent || 'object'} |\n`; });
+    o += '\n';
+  }
+  if (d.objects && d.objects.length) {
+    o += `## Objects\n\n| name | type |\n|---|---|\n`;
+    d.objects.forEach(obj => { o += `| ${obj.name} | ${obj.type || ''} |\n`; });
+    o += '\n';
+  }
+  o += `## Predicates\n\n| name | desc |\n|---|---|\n`;
+  if (d.predicates && d.predicates.length) {
+    d.predicates.forEach(p => { o += `| ${p.name} | ${p.desc || ''} |\n`; });
+  } else {
+    o += `| pred(?x) | <!-- TODO --> |\n`;
+  }
+  o += '\n';
+  if (d.actions && d.actions.length) {
+    o += `## Actions\n\n`;
+    d.actions.forEach(a => {
+      o += `#### ${a.name}${a.desc ? ' — ' + a.desc : ''}\n`;
+      const pre = a.preconditions || 'TODO';
+      const add = a.add_effects   || 'TODO';
+      const del = a.del_effects   || 'TODO';
+      o += `\`\`\`\npreconditions: ${pre}\nadd effects:   ${add}\ndel effects:   ${del}\n\`\`\`\n\n`;
+    });
+  } else {
+    o += `## Actions\n\n#### action(?x - type) — TODO: short description\n\`\`\`\npreconditions: TODO\nadd effects:   TODO\ndel effects:   TODO\n\`\`\`\n\n`;
+  }
+  o += d.goal ? `## Goal\n\n${d.goal}\n\n` : `## Goal\n\nTODO: describe the goal condition.\n\n`;
+  o += `## Instances\n\n| name | n | k* | status | source | file |\n|---|---|---|---|---|---|\n`;
+  if (d.instances && d.instances.length) {
+    d.instances.forEach(inst => {
+      o += `| ${inst.name || 'instance-01'} | ${inst.n || '—'} | ${inst.k || '—'} | ${inst.status || 'unknown'} | ${inst.source || ''} | ${inst.file || ''} |\n`;
+    });
+  } else {
+    o += `| instance-01 | — | — | unknown | | instances/instance-01.pddl |\n`;
+  }
+  return o.trimEnd() + '\n';
+}
+
+// ── Render output ─────────────────────────────────────────────────────────────
+function renderOutput() {
+  const slug = val('f-slug') || 'slug';
+  document.getElementById('folder-hint').textContent = `problems/probNNN-${slug}/`;
+
+  const area = document.getElementById('output-area');
+  area.innerHTML = '';
+
+  function mkBlock(path, content) {
+    const b = document.createElement('div');
+    b.className = 'out-file';
+    b.innerHTML = `
+      <div class="out-hdr">
+        <span class="out-path">${esc(path)}</span>
+        <button class="dl-btn" onclick="dlText('${esc(path.split('/').pop())}', this.closest('.out-file').querySelector('pre').textContent)">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v5M2.5 4.5L5 7l2.5-2.5M1 8.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          Download
+        </button>
+      </div>
+      <pre class="out-pre">${esc(content)}</pre>`;
+    area.appendChild(b);
+  }
+
+  mkBlock('general.md', genGeneral());
+  const refsMd = genReferences();
+  if (refsMd) mkBlock('references.md', refsMd);
+  getDomains().forEach(d => mkBlock(`domains/${d.key}/domain.md`, genDomain(d)));
+
+  if (!area.children.length)
+    area.innerHTML = '<p style="color:var(--muted);font-size:13px">Fill in at least a title and one domain, then click Regenerate.</p>';
+}
+
+// ── ZIP download ──────────────────────────────────────────────────────────────
+async function downloadZip() {
+  const blocks = document.querySelectorAll('#output-area .out-file');
+  if (!blocks.length) { renderOutput(); return; }
+
+  const zip = new JSZip();
+  blocks.forEach(b => {
+    zip.file(
+      b.querySelector('.out-path').textContent.trim(),
+      b.querySelector('pre').textContent
+    );
+  });
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${val('f-slug') || 'problem'}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function dlText(filename, content) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+
+document.addEventListener('DOMContentLoaded', () => { addDomain(); });
+</script>
+</body>
+</html>
