@@ -639,7 +639,7 @@ def make_env(template_dir: Path):
 def build_contribute(output_dir: Path, env) -> None:
     """Render the contribute/submit form page."""
     template = env.get_template(CONTRIBUTE_TEMPLATE)
-    html = template.render(base='../../')
+    html = template.render(base='../')
     out_dir = output_dir / 'contribute'
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / 'index.html').write_text(html, encoding='utf-8')
