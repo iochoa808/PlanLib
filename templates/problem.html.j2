@@ -41,7 +41,7 @@
     </div>
   </div>
   <div class="meta-box">
-    <table>{% for key, value in problem.meta.items() %}<tr><td>{{ key }}</td><td>{{ value }}</td></tr>{% endfor %}</table>
+    <table>{% for key, value in problem.meta.items() %}{% if value %}<tr><td>{{ key }}</td><td>{{ value }}</td></tr>{% endif %}{% endfor %}</table>
   </div>
 </div>
 
@@ -66,6 +66,8 @@
       {% else %}
       <a class="variant-chip" href="{{ v.href }}" target="_blank" rel="noopener">{{ v.label }}</a>
       {% endif %}
+    {% elif not v.href %}
+    <a class="variant-chip variant-chip-stub" href="{{ base }}problems/not-yet/?name={{ v.label | urlencode }}">{{ v.label }}</a>
     {% else %}
     <span class="variant-chip">{{ v.label }}</span>
     {% endif %}
@@ -131,9 +133,9 @@
       <div class="domain-card-meta">
         <span class="lang-badge">{{ domain.language }}</span>
         {% if domain._content is defined and domain._content %}
-        <button class="file-link" onclick="event.stopPropagation(); downloadText('{{ domain.file.split('/')[-1] }}', domainContents[{{ loop.index0 }}])">
+        <button class="file-link" onclick="event.stopPropagation(); downloadDomainZip({{ loop.index0 }})">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v5M2.5 4.5L5 7l2.5-2.5M1 8.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-          download
+          zip
         </button>
         {% endif %}
         <span class="chevron" id="chevron-{{ card_id }}">▾</span>
@@ -158,7 +160,14 @@
       {% if vp.state_space or vp.types or vp.objects %}
       <div class="domain-section">
         {% if vp.state_space %}<h3>State Space</h3>{{ vp.state_space | md_body }}{% endif %}
-        {% if vp.types %}<h3>Types</h3>{{ vp.types | md_body }}{% endif %}
+        {% if vp.types %}
+        <h3>Types</h3>
+        <div class="pred-grid">
+          {% for t in vp.types %}
+          <div class="pred-item"><div class="pred-name">{{ t.name }}</div><div class="pred-desc">→ {{ t.parent }}</div></div>
+          {% endfor %}
+        </div>
+        {% endif %}
         {% if vp.objects %}<h3>Objects</h3>{{ vp.objects | md_body }}{% endif %}
       </div>
       {% endif %}
@@ -182,7 +191,7 @@
         {% for action in vp.actions %}
         <div class="code-wrap">
           <div class="code-header"><div class="code-header-left"><span class="fname">{{ action.name }}</span><span style="color:var(--muted)">{{ action.desc }}</span></div></div>
-          <pre>{{ action.schema }}</pre>
+          <pre class="pddl">{{ action.schema | e }}</pre>
         </div>
         {% endfor %}
         {% if vp.goal %}<h3>Goal</h3>{{ vp.goal | md_body }}{% endif %}
@@ -192,8 +201,14 @@
       {# PDDL source #}
       {% if domain._content is defined and domain._content %}
       <div class="domain-section">
-        <h3>PDDL Source</h3>
-        <pre>{{ domain._content | e }}</pre>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <h3 style="margin:0">PDDL Source</h3>
+          <button class="file-link" onclick="downloadText('{{ domain.file.split('/')[-1] }}', domainContents[{{ loop.index0 }}])">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v5M2.5 4.5L5 7l2.5-2.5M1 8.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Domain
+          </button>
+        </div>
+        <pre class="pddl">{{ domain._content | e }}</pre>
       </div>
       {% endif %}
 
@@ -206,21 +221,30 @@
         {% if problem.instances.description %}<p style="font-size:12px;color:var(--muted);margin-bottom:10px">{{ problem.instances.description }}</p>{% endif %}
         <table class="inst">
           <thead>
-            <tr><th>#</th><th>Name</th><th>n</th><th>k*</th><th>Status</th><th>Source</th><th>File</th></tr>
+            <tr><th>#</th><th>Name</th><th>n</th><th>opt. cost</th><th>Status</th><th>Source</th><th>File</th></tr>
           </thead>
           <tbody>
+            {%- set global_idx = problem.instances.rows | map(attribute='id') | list %}
             {% for row in ns.domain_instances %}
-            <tr id="inst-{{ row.id }}">
-              <td>{{ row.id }}</td>
+            {%- set has_detail = row.description is defined and row.description %}
+            <tr id="inst-{{ row.id }}"{% if has_detail %} class="inst-row" onclick="toggleInstRow('{{ row.id }}')" style="cursor:pointer"{% endif %}>
+              <td>{{ row.id }}{% if has_detail %} <span class="inst-row-chev" id="inst-chev-{{ row.id }}">▾</span>{% endif %}</td>
               <td>{{ row.name }}</td>
               <td>{{ row.n if row.n is not none else '—' }}</td>
               <td class="opt">{{ row.optimal if row.optimal is not none else '—' }}</td>
               <td class="status">{{ row.status }}</td>
               <td>{% if row.source_ref %}<a class="ref-link" onclick="jumpToRef('{{ row.source_ref }}')">[{{ row.source_ref }}]</a>{% else %}—{% endif %}</td>
-              <td>{% if row.file and row._content is defined and row._content %}
-              {%- set global_idx = problem.instances.rows | map(attribute='id') | list %}
-              <button class="file-link" onclick="downloadText('{{ row.file.split('/')[-1] }}', instanceContents[{{ global_idx.index(row.id) }}])"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v5M2.5 4.5L5 7l2.5-2.5M1 8.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>.pddl</button>{% else %}<span style="color:var(--muted)">—</span>{% endif %}</td>
+              <td>{% if row.file and row._content is defined and row._content %}<button class="file-link" onclick="event.stopPropagation();downloadText('{{ row.file.split('/')[-1] }}', instanceContents[{{ global_idx.index(row.id) }}])"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v5M2.5 4.5L5 7l2.5-2.5M1 8.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>.pddl</button>{% else %}<span style="color:var(--muted)">—</span>{% endif %}</td>
             </tr>
+            {% if has_detail %}
+            <tr id="inst-det-{{ row.id }}" style="display:none">
+              <td colspan="7" style="padding:0">
+                <div style="padding:10px 16px;background:#0a0f00;border-top:1px solid #1a2800">
+                  <p style="font-size:12px;color:#aaa;margin:0;line-height:1.7">{{ row.description }}</p>
+                </div>
+              </td>
+            </tr>
+            {% endif %}
             {% endfor %}
           </tbody>
         </table>
@@ -270,6 +294,76 @@ const instanceContents = [
 
   {% endfor %}
 ];
+{%- set _gidx = problem.instances.rows | map(attribute='id') | list %}
+const domainData = [
+  {% for domain in problem.domains.entries %}
+  { file: {{ (domain.file.split('/')[-1]) | tojson if domain.file is defined else '""' }},
+    instances: [{% for row in problem.instances.rows if row.domain == domain.key and (row._content is defined and row._content) and row.file %}{ idx: {{ _gidx.index(row.id) }}, file: {{ (row.file.split('/')[-1]) | tojson }} }{% if not loop.last %}, {% endif %}{% endfor %}] }{% if not loop.last %},{% endif %}
+
+  {% endfor %}
+];
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+function toggleInstRow(id) {
+  const det  = document.getElementById('inst-det-' + id);
+  const chev = document.getElementById('inst-chev-' + id);
+  if (!det) return;
+  const open = det.style.display === 'none';
+  det.style.display = open ? '' : 'none';
+  if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
+}
+async function downloadDomainZip(idx) {
+  const d = domainData[idx];
+  const zip = new JSZip();
+  if (domainContents[idx]) zip.file(d.file || 'domain.pddl', domainContents[idx]);
+  d.instances.forEach(inst => {
+    if (instanceContents[inst.idx]) zip.file(inst.file, instanceContents[inst.idx]);
+  });
+  if (!Object.keys(zip.files).length) return;
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (d.file || 'domain').replace(/\.[^.]+$/, '') + '.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+<script>
+(function(){
+  const KW=new Set(['define','domain','problem','and','or','not','forall','exists','when','imply','either','minimize','maximize','always','sometime','at-most-once','sometime-after','sometime-before','hold-during','hold-after','is-violated','total-cost']);
+  const SEC=new Set([':requirements',':types',':constants',':predicates',':functions',':action',':durative-action',':derived',':axiom',':init',':goal',':objects',':metric',':duration',':precondition',':effect',':parameters',':condition',':constraints',':strips',':typing',':equality',':negative-preconditions',':disjunctive-preconditions',':conditional-effects',':numeric-fluents',':action-costs',':durative-actions',':timed-initial-literals',':preferences',':quantified-preconditions',':existential-preconditions',':universal-preconditions',':adl',':fluents',':continuous-effects',':open-world',':true-negation']);
+  function e(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function highlight(src){
+    let out='',i=0;
+    while(i<src.length){
+      if(src[i]===';'){
+        let j=src.indexOf('\n',i);if(j<0)j=src.length;
+        out+=`<span class="ph-c">${e(src.slice(i,j))}</span>`;i=j;continue;
+      }
+      if(src[i]==='?'){
+        const m=src.slice(i).match(/^\?[\w-]*/);
+        if(m){out+=`<span class="ph-v">${e(m[0])}</span>`;i+=m[0].length;continue;}
+      }
+      if(src[i]===':'){
+        const m=src.slice(i).match(/^:[\w-]*/);
+        if(m){out+=`<span class="${SEC.has(m[0])?'ph-s':'ph-s'}">${e(m[0])}</span>`;i+=m[0].length;continue;}
+      }
+      if(/\d/.test(src[i])||(src[i]==='-'&&/\d/.test(src[i+1]||''))){
+        const m=src.slice(i).match(/^-?\d+(\.\d+)?/);
+        if(m){out+=`<span class="ph-n">${e(m[0])}</span>`;i+=m[0].length;continue;}
+      }
+      if(/[a-zA-Z_]/.test(src[i])){
+        const m=src.slice(i).match(/^[\w-]*/);
+        if(m){out+=KW.has(m[0])?`<span class="ph-k">${e(m[0])}</span>`:e(m[0]);i+=m[0].length;continue;}
+      }
+      if(src[i]==='('||src[i]===')'){out+=`<span class="ph-p">${src[i]}</span>`;i++;continue;}
+      out+=e(src[i]);i++;
+    }
+    return out;
+  }
+  document.querySelectorAll('pre.pddl').forEach(pre=>{pre.innerHTML=highlight(pre.textContent);});
+})();
 </script>
 <script src="{{ base }}static/planlib.js"></script>
 

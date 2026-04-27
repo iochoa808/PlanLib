@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Not yet in PlanLib</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ base }}static/index.css" />
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a class="topbar-logo" href="{{ base }}">PlanLib</a>
+    <span class="topbar-sep">›</span>
+    <a href="{{ base }}problems/">Problems</a>
+    <span class="topbar-sep">›</span>
+    <span class="topbar-crumb" id="nav-name">Not yet contributed</span>
+  </div>
+  <div class="topbar-nav">
+    <a href="{{ base }}problems/">Problems</a>
+    <a href="{{ base }}languages/">Languages</a>
+    <a href="{{ base }}ipc/">IPC</a>
+    <a href="{{ base }}tags/">Tags</a>
+    <a href="{{ base }}#about">About</a>
+    <a href="{{ base }}contribute/">Contribute</a>
+    <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<section class="hero" style="padding-bottom:48px">
+  <div class="hero-label">Not yet in PlanLib</div>
+  <h1 class="hero-title" id="stub-title">This domain</h1>
+  <p class="hero-body">This planning domain has been referenced but hasn't been contributed to PlanLib yet. You can be the first to document it.</p>
+  <div class="hero-actions">
+    <a href="{{ base }}problems/" class="btn-ghost">Browse all problems</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="contribute">
+    <div>
+      <div class="section-label">How to contribute</div>
+      <div class="section-title" id="how-title">Add this domain to PlanLib</div>
+      <p class="section-body" style="margin-bottom:24px">
+        Use the interactive form to describe the domain — its metadata, formal definition,
+        complexity results, and benchmark instances. The form generates all the source files
+        in a ready-to-submit ZIP. Fork the repo, drop the files in, and open a pull request.
+        A maintainer will review and assign a stable identifier on merge.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="{{ base }}contribute/" class="btn-primary" id="contribute-link">Open the form →</a>
+        <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" class="btn-ghost">View on GitHub ↗</a>
+      </div>
+    </div>
+    <div class="terminal">
+      <div class="terminal-title">After downloading the ZIP</div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">gh repo fork</span> <span class="t-arg">planlib/planlib --clone</span></div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">mkdir</span> <span class="t-arg">problems/<span id="slug-hint">my-domain</span></span></div>
+      <div class="t-comment"># extract the ZIP into that folder</div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">python planlib_build.py build</span> <span class="t-arg">--all</span></div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">gh pr create</span></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>PlanLib — AI Planning Problem Library</span>
+  <span><a href="https://github.com/planlib/planlib" target="_blank" rel="noopener">GitHub</a> · <a href="#">Cite</a> · <a href="#">Contact</a></span>
+</footer>
+
+<script>
+(function () {
+  const name = new URLSearchParams(window.location.search).get('name');
+  if (!name) return;
+
+  document.title = name + ' | PlanLib';
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('stub-title').textContent = name;
+  document.getElementById('how-title').textContent = 'Add “' + name + '” to PlanLib';
+
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-domain';
+  document.getElementById('slug-hint').textContent = slug;
+
+  const link = document.getElementById('contribute-link');
+  link.href = link.href + '?title=' + encodeURIComponent(name);
+})();
+</script>
+
+</body>
+</html>

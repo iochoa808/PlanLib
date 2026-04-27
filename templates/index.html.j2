@@ -72,23 +72,23 @@
       <div class="section-label">Contribute</div>
       <div class="section-title">Add a planning domain</div>
       <p class="section-body" style="margin-bottom:24px">
-        Each problem lives in a folder with a few Markdown files —
-        <span class="code-inline">general.md</span>, <span class="code-inline">references.md</span>,
-        and a <span class="code-inline">domain.md</span> per variant.
-        The scaffold command fills in all the structure; you just fill in the content.
-        New entries are reviewed for correctness before being assigned a stable
-        <span class="code-inline">probNNN</span> identifier.
+        Use the interactive form to describe your domain — metadata, references,
+        types, predicates, actions, and instances. The form generates all the
+        Markdown source files and PDDL stubs in a ready-to-submit ZIP.
+        Fork the repo, drop the files in, and open a pull request.
+        A maintainer will review and assign a stable
+        <span class="code-inline">probNNN</span> identifier on merge.
       </p>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" class="btn-primary">View on GitHub ↗</a>
-        <a href="#" class="btn-ghost">Read the guide</a>
+        <a href="{{ base }}contribute/" class="btn-primary">Open the form →</a>
+        <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" class="btn-ghost">View on GitHub ↗</a>
       </div>
     </div>
     <div class="terminal">
-      <div class="terminal-title">Quick start</div>
-      <div><span class="t-prompt">$</span> <span class="t-cmd">git clone</span> <span class="t-arg">github.com/planlib/planlib</span></div>
-      <div><span class="t-prompt">$</span> <span class="t-cmd">python planlib_build.py new</span> <span class="t-arg">prob005-myslug</span></div>
-      <div class="t-comment"># fill in the generated Markdown files</div>
+      <div class="terminal-title">After downloading the ZIP</div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">gh repo fork</span> <span class="t-arg">planlib/planlib --clone</span></div>
+      <div><span class="t-prompt">$</span> <span class="t-cmd">mkdir</span> <span class="t-arg">problems/my-slug</span></div>
+      <div class="t-comment"># extract the ZIP into problems/my-slug/</div>
       <div><span class="t-prompt">$</span> <span class="t-cmd">python planlib_build.py build</span> <span class="t-arg">--all</span></div>
       <div><span class="t-prompt">$</span> <span class="t-cmd">gh pr create</span></div>
     </div>

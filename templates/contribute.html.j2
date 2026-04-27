@@ -142,6 +142,21 @@
 .ic { font-family: var(--mono); background: #1a2a00; padding: 1px 5px; border-radius: 3px; }
 .tbl-col-hdr { font-size: 10px; font-family: var(--mono); color: var(--muted); letter-spacing: .06em; padding: 0 2px; }
 .dom-section-lbl { font-size: 10px; font-family: var(--mono); color: var(--accent); letter-spacing: .06em; margin: 14px 0 6px; }
+.drop-zone {
+  border: 1px dashed var(--border); border-radius: 4px; padding: 14px 10px;
+  text-align: center; font-size: 12px; font-family: var(--mono); color: var(--muted);
+  cursor: pointer; transition: border-color .15s, color .15s; line-height: 1.5; box-sizing: border-box;
+}
+.drop-zone:hover, .drop-zone.dz-over { border-color: var(--accent); color: var(--accent); }
+.drop-zone.dz-loaded { border-style: solid; border-color: var(--accent); color: var(--text); }
+.drop-zone-sm { padding: 6px 10px; }
+.dz-rm {
+  display: none; align-items: center; gap: 4px; margin-top: 5px;
+  background: none; border: 1px solid #333; border-radius: 4px;
+  color: var(--muted); font-size: 11px; font-family: var(--mono);
+  letter-spacing: .04em; padding: 3px 10px; cursor: pointer; transition: all .15s;
+}
+.dz-rm:hover { border-color: #cc3300; color: #cc3300; }
 </style>
 </head>
 <body>
@@ -172,6 +187,20 @@
 <section class="section" style="padding-top:36px;padding-bottom:72px">
 <div class="wiz">
 
+  {% if problems_data %}
+  <!-- Load existing problem -->
+  <div style="background:#0a1200;border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:10px;font-family:var(--mono);color:var(--accent);letter-spacing:.08em;white-space:nowrap">LOAD EXISTING</span>
+    <select id="load-prob-sel" class="fs" style="flex:1;min-width:180px;max-width:380px;padding:6px 8px">
+      <option value="">+ New problem</option>
+      {% for p in problems_data %}<option value="{{ loop.index0 }}">{{ p.title }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" class="add-btn" style="margin:0" onclick="loadSelectedProblem()">Load →</button>
+    <span id="load-ok" style="font-size:11px;font-family:var(--mono);color:var(--accent);display:none">✓ Loaded — edit and re-download</span>
+  </div>
+  {% endif %}
+
   <!-- Step tabs -->
   <div class="wiz-tabs">
     <div class="wiz-tab active" onclick="tryGoTo(0)">Identity</div>
@@ -186,7 +215,7 @@
   <!-- ══════════════════════════════════════════ STEP 0 — Identity -->
   <div class="wiz-panel active" id="panel-0">
     <div class="step-title">Problem Identity</div>
-    <div class="step-desc">Core metadata. A stable <span class="ic">probNNN</span> ID is assigned automatically when the pull request is merged — you don't need to pick one.</div>
+    <div class="step-desc">Core metadata. A stable identifier is assigned by a maintainer when the pull request is merged — you don't need to pick one.</div>
 
     <div class="fg">
       <label class="fl">Title <span class="req">*</span></label>
@@ -331,7 +360,6 @@
 
     <div class="fg">
       <label class="fl">Variants</label>
-      <div class="fh" style="margin-bottom:10px">Link to a domain card with <span class="ic">#domain-key</span> or to an external URL.</div>
       <div class="dyn" id="variants-list"></div>
       <button type="button" class="add-btn" onclick="addVariant()">+ Add variant</button>
     </div>
@@ -344,12 +372,13 @@
       <div id="complexity-list"></div>
       <button type="button" class="add-btn" onclick="addComplexityRow()">+ Add result</button>
     </div>
+
   </div>
 
   <!-- ══════════════════════════════════════════ STEP 4 — Domains -->
   <div class="wiz-panel" id="panel-4">
     <div class="step-title">Domains</div>
-    <div class="step-desc">Add at least one PDDL domain variant. Each generates a <span class="ic">domains/&lt;slug&gt;/domain.md</span> file, where the slug is derived from the domain title.</div>
+    <div class="step-desc">Add at least one domain variant. Each generates a <span class="ic">domain.md</span> and a <span class="ic">domain.pddl</span> (uploaded file or a typed placeholder). Instances each get their own <span class="ic">.pddl</span> file too.</div>
 
     <div id="domains-list"></div>
     <button type="button" class="add-btn" onclick="addDomain()">+ Add domain</button>
@@ -367,7 +396,7 @@
   <!-- ══════════════════════════════════════════ STEP 6 — Download -->
   <div class="wiz-panel" id="panel-6">
     <div class="step-title">Generated Files</div>
-    <div class="step-desc">Extract the ZIP into a new folder inside <span class="ic">problems/</span> in your fork, then open a pull request.</div>
+    <div class="step-desc">Extract the ZIP into a new folder inside <span class="ic">problems/</span> in your fork, then open a pull request. A maintainer will assign a stable identifier on merge.</div>
 
     <div class="zip-bar">
       <button class="zip-btn" onclick="downloadZip()">
@@ -381,11 +410,11 @@
     <div class="next-steps">
       <div class="next-steps-lbl">NEXT STEPS</div>
       <p>
-        1. Clone or fork the <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" style="color:var(--accent)">planlib repository</a>.<br>
-        2. Inside <span class="ic">problems/</span>, create a folder named <span id="folder-hint" class="ic">probNNN-slug/</span> (the <span class="ic">probNNN</span> prefix will be assigned by a maintainer after review).<br>
-        3. Extract the ZIP contents directly into that folder — you should end up with <span class="ic">general.md</span>, <span class="ic">references.md</span>, and a <span class="ic">domains/</span> subfolder.<br>
+        1. Fork the <a href="https://github.com/planlib/planlib" target="_blank" rel="noopener" style="color:var(--accent)">planlib repository</a> on GitHub.<br>
+        2. Extract the ZIP directly into <span class="ic">problems/</span> — it unpacks into a <span id="folder-hint" class="ic">slug/</span> folder automatically.<br>
+        3. You'll get <span class="ic">general.md</span>, <span class="ic">references.md</span>, and a <span class="ic">domains/</span> subfolder with the <span class="ic">domain.md</span> and the domain file. Any uploaded instance files land in <span class="ic">domains/&lt;key&gt;/instances/</span>; generated placeholder files need to be filled in.<br>
         4. Run <span class="ic">python planlib_build.py build --all</span> locally to verify the build passes.<br>
-        5. Open a pull request — a maintainer will review and assign the stable <span class="ic">probNNN</span> identifier.
+        5. Open a pull request — CI will re-run the build automatically. A maintainer will assign a stable identifier on merge.
       </p>
     </div>
   </div>
@@ -397,6 +426,7 @@
     <button class="wbtn wbtn-primary" id="btn-next" onclick="wizNext()">Next →</button>
   </div>
 
+<datalist id="variant-opts"></datalist>
 </div>
 </section>
 
@@ -410,6 +440,7 @@
 // ── Constants ─────────────────────────────────────────────────────────────────
 const NSTEPS = 7;
 let cur = 0;
+const PLANLIB_PROBLEMS = {{ (problems_data | tojson) if problems_data is defined and problems_data else '[]' }};
 
 const REQUIRED = {
   0: [['f-title','Title'], ['f-slug','Slug'], ['f-subtitle','Subtitle']],
@@ -504,16 +535,72 @@ function addVariant() {
   const d = document.createElement('div');
   d.className = 'drow'; d.id = `var-${i}`;
   d.innerHTML = `
-    <input class="fi" id="vl-${i}" type="text" placeholder="Variant name" style="flex:2" />
-    <input class="fi" id="vh-${i}" type="text" placeholder="Link: #domain-key or https://…" style="flex:3" />
+    <input class="fi" id="vl-${i}" type="text" placeholder="Variant name" style="flex:2" oninput="refreshVariantOpts()" />
+    <div style="flex:3;display:flex;gap:6px">
+      <select class="fs" id="vh-sel-${i}" style="flex:1" onchange="onVariantLinkChange(${i})">
+        <option value="">(no link)</option>
+        <option value="__url__">External URL…</option>
+      </select>
+      <input class="fi" id="vh-url-${i}" type="text" placeholder="https://…" style="flex:1.5;display:none" />
+    </div>
     <button type="button" class="rm-btn" onclick="document.getElementById('var-${i}').remove()">×</button>`;
   document.getElementById('variants-list').appendChild(d);
+  refreshVariantLinkOpts();
+}
+function onVariantLinkChange(i) {
+  const sel = document.getElementById(`vh-sel-${i}`);
+  const url = document.getElementById(`vh-url-${i}`);
+  if (!url) return;
+  const showUrl = sel && sel.value === '__url__';
+  url.style.display = showUrl ? '' : 'none';
+  if (!showUrl) url.value = '';
 }
 function getVariants() {
   return [...document.querySelectorAll('#variants-list .drow')].map(r => {
     const i = r.id.replace('var-', '');
-    return { label: val(`vl-${i}`), href: val(`vh-${i}`) };
+    const sel = document.getElementById(`vh-sel-${i}`);
+    const selVal = sel ? sel.value : '';
+    const href = selVal === '__url__' ? val(`vh-url-${i}`) : selVal;
+    return { label: val(`vl-${i}`), href };
   }).filter(v => v.label);
+}
+function refreshVariantOpts() {
+  const dl = document.getElementById('variant-opts');
+  if (!dl) return;
+  dl.innerHTML = getVariants().map(v => `<option value="${esc(v.label)}">`).join('');
+}
+function refreshVariantLinkOpts() {
+  const domains = [...document.querySelectorAll('#domains-list .entry-card')].map(r => {
+    const i = r.id.replace('dom-', '');
+    const title = val(`dt-${i}`);
+    return { title, slug: slugify(title) };
+  }).filter(d => d.title);
+  document.querySelectorAll('#variants-list .drow').forEach(r => {
+    const i = r.id.replace('var-', '');
+    const sel = document.getElementById(`vh-sel-${i}`);
+    if (!sel) return;
+    const current = sel.value;
+    [...sel.options].filter(o => o.value !== '' && o.value !== '__url__').forEach(o => o.remove());
+    const urlOpt = sel.querySelector('option[value="__url__"]');
+    domains.forEach(d => {
+      const opt = new Option(d.title, `#domain-${d.slug}`);
+      sel.insertBefore(opt, urlOpt);
+    });
+    if ([...sel.options].some(o => o.value === current)) sel.value = current;
+  });
+}
+function linkVariantToDomain(domIdx) {
+  const title = val(`dt-${domIdx}`);
+  refreshVariantLinkOpts();
+  if (!title) return;
+  const targetHref = `#domain-${slugify(title)}`;
+  document.querySelectorAll('#variants-list .drow').forEach(r => {
+    const i = r.id.replace('var-', '');
+    if (val(`vl-${i}`).toLowerCase() === title.toLowerCase()) {
+      const sel = document.getElementById(`vh-sel-${i}`);
+      if (sel && sel.value === '') sel.value = targetHref;
+    }
+  });
 }
 
 // ── Complexity ────────────────────────────────────────────────────────────────
@@ -539,6 +626,7 @@ function getComplexity() {
   }).filter(r => r.problem);
 }
 
+
 // ── Domains ───────────────────────────────────────────────────────────────────
 function slugify(s) {
   return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'domain';
@@ -556,7 +644,7 @@ function addDomain() {
     </div>
     <div class="fg">
       <label class="fl">Domain Title <span class="req">*</span></label>
-      <input class="fi" id="dt-${i}" type="text" placeholder="PDDL Domain (base)" />
+      <input class="fi" id="dt-${i}" type="text" placeholder="PDDL Domain (base)" list="variant-opts" oninput="linkVariantToDomain(${i})" />
       <div class="fh">The folder slug is derived from this — e.g. "PDDL Domain (base)" → <span class="ic">domains/pddl-domain-base/</span></div>
     </div>
     <div class="frow" style="margin-top:10px">
@@ -578,6 +666,19 @@ function addDomain() {
       <label class="fl">Notes</label>
       <textarea class="ft" id="dn-${i}" rows="2" placeholder="Brief notes about this variant…"></textarea>
     </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="fl">Domain File</label>
+      <div class="drop-zone" id="dz-dom-${i}"
+           ondragover="event.preventDefault();this.classList.add('dz-over')"
+           ondragleave="this.classList.remove('dz-over')"
+           ondrop="handleDomainDrop(event,${i})"
+           onclick="document.getElementById('df-dom-${i}').click()">
+        <span id="dz-dom-lbl-${i}">Drop domain file here or <u>browse</u></span>
+      </div>
+      <input type="file" id="df-dom-${i}" accept=".pddl,.lisp" style="display:none" onchange="handleDomainFile(event,${i})" />
+      <button type="button" class="dz-rm" id="dz-dom-rm-${i}" onclick="removeDomainFile(${i})">× Remove file</button>
+      <pre id="dz-dom-pre-${i}" style="display:none;margin-top:6px;max-height:220px;overflow:auto;font-size:11px;line-height:1.5;background:#060c00;border:1px solid var(--border);border-radius:4px;padding:10px;color:var(--text);white-space:pre"></pre>
+    </div>
     <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;margin:18px 0 8px">
       FORMAL SECTIONS — optional, can also be edited in the downloaded file</div>
     <div class="fg">
@@ -591,16 +692,7 @@ function addDomain() {
     </div>
     <div id="type-list-${i}"></div>
     <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:14px" onclick="addType(${i})">+ Add type</button>
-    <div class="dom-section-lbl">OBJECTS</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;margin-bottom:4px">
-      <span class="tbl-col-hdr">name</span><span class="tbl-col-hdr">type</span><span></span>
-    </div>
-    <div id="obj-list-${i}"></div>
-    <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:14px" onclick="addObject(${i})">+ Add object</button>
     <div class="dom-section-lbl">PREDICATES</div>
-    <div style="display:grid;grid-template-columns:1.2fr 1.5fr 2fr 28px;gap:6px;margin-bottom:4px">
-      <span class="tbl-col-hdr">name</span><span class="tbl-col-hdr">parameters</span><span class="tbl-col-hdr">description</span><span></span>
-    </div>
     <div id="pred-list-${i}"></div>
     <button type="button" class="add-btn" style="margin-top:4px;margin-bottom:14px" onclick="addPredicate(${i})">+ Add predicate</button>
     <div class="dom-section-lbl">ACTIONS</div>
@@ -616,14 +708,108 @@ function addDomain() {
   document.getElementById('domains-list').appendChild(d);
 }
 
-// ── Instances (per domain) ────────────────────────────────────────────────────
-function syncInstFile(domIdx, idx) {
-  const nameEl = document.getElementById(`in-name-${domIdx}-${idx}`);
-  const fileEl = document.getElementById(`in-file-${domIdx}-${idx}`);
-  const slug = (nameEl.value.trim()).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  if (slug) fileEl.value = slug + '.pddl';
+// ── PDDL file stores ─────────────────────────────────────────────────────────
+const domainFiles   = new Map(); // domIdx (number) -> {name, content}
+const instanceFiles = new Map(); // `${domIdx}-${instIdx}` -> {name, content}
+
+function handleDomainDrop(event, domIdx) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dz-over');
+  const file = event.dataTransfer.files[0];
+  if (file) loadDomainFile(domIdx, file);
+}
+function handleDomainFile(event, domIdx) {
+  const file = event.target.files[0];
+  if (file) loadDomainFile(domIdx, file);
+}
+function _applyDomainLoaded(domIdx, name, content) {
+  const lbl = document.getElementById(`dz-dom-lbl-${domIdx}`);
+  const dz  = document.getElementById(`dz-dom-${domIdx}`);
+  const rm  = document.getElementById(`dz-dom-rm-${domIdx}`);
+  const pre = document.getElementById(`dz-dom-pre-${domIdx}`);
+  if (lbl) lbl.innerHTML = `✓ ${esc(name)} <span style="font-size:10px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-left:6px" onclick="event.stopPropagation();togglePre('dz-dom-pre-${domIdx}',this)">▾ view</span>`;
+  if (dz)  dz.classList.add('dz-loaded');
+  if (rm)  rm.style.display = 'inline-flex';
+  if (pre) pre.textContent = content;
+}
+function loadDomainFile(domIdx, file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    domainFiles.set(domIdx, { name: file.name, content: e.target.result });
+    _applyDomainLoaded(domIdx, file.name, e.target.result);
+  };
+  reader.readAsText(file);
+}
+function setDomainContent(domIdx, filename, content) {
+  if (!filename || !content) return;
+  domainFiles.set(domIdx, { name: filename, content });
+  _applyDomainLoaded(domIdx, filename, content);
 }
 
+function removeDomainFile(domIdx) {
+  domainFiles.delete(domIdx);
+  const lbl = document.getElementById(`dz-dom-lbl-${domIdx}`);
+  const dz  = document.getElementById(`dz-dom-${domIdx}`);
+  const rm  = document.getElementById(`dz-dom-rm-${domIdx}`);
+  const inp = document.getElementById(`df-dom-${domIdx}`);
+  const pre = document.getElementById(`dz-dom-pre-${domIdx}`);
+  if (lbl) lbl.innerHTML = 'Drop domain file here or <u>browse</u>';
+  if (dz)  dz.classList.remove('dz-loaded');
+  if (rm)  rm.style.display = 'none';
+  if (inp) inp.value = '';
+  if (pre) { pre.textContent = ''; pre.style.display = 'none'; }
+}
+
+function handleInstDrop(event, domIdx, instIdx) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dz-over');
+  const file = event.dataTransfer.files[0];
+  if (file) loadInstFile(domIdx, instIdx, file);
+}
+function handleInstFile(event, domIdx, instIdx) {
+  const file = event.target.files[0];
+  if (file) loadInstFile(domIdx, instIdx, file);
+}
+function _applyInstLoaded(domIdx, instIdx, name, content) {
+  const lbl = document.getElementById(`dz-inst-lbl-${domIdx}-${instIdx}`);
+  const dz  = document.getElementById(`dz-inst-${domIdx}-${instIdx}`);
+  const rm  = document.getElementById(`dz-inst-rm-${domIdx}-${instIdx}`);
+  const pre = document.getElementById(`dz-inst-pre-${domIdx}-${instIdx}`);
+  if (lbl) lbl.innerHTML = `✓ ${esc(name)} <span style="font-size:10px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-left:6px" onclick="event.stopPropagation();togglePre('dz-inst-pre-${domIdx}-${instIdx}',this)">▾ view</span>`;
+  if (dz)  dz.classList.add('dz-loaded');
+  if (rm)  rm.style.display = 'inline-flex';
+  if (pre) pre.textContent = content;
+}
+function loadInstFile(domIdx, instIdx, file) {
+  const key = `${domIdx}-${instIdx}`;
+  const reader = new FileReader();
+  reader.onload = e => {
+    instanceFiles.set(key, { name: file.name, content: e.target.result });
+    _applyInstLoaded(domIdx, instIdx, file.name, e.target.result);
+  };
+  reader.readAsText(file);
+}
+function setInstContent(domIdx, instIdx, filename, content) {
+  if (!filename || !content) return;
+  instanceFiles.set(`${domIdx}-${instIdx}`, { name: filename, content });
+  _applyInstLoaded(domIdx, instIdx, filename, content);
+}
+
+function removeInstFile(domIdx, instIdx) {
+  instanceFiles.delete(`${domIdx}-${instIdx}`);
+  const lbl = document.getElementById(`dz-inst-lbl-${domIdx}-${instIdx}`);
+  const dz  = document.getElementById(`dz-inst-${domIdx}-${instIdx}`);
+  const rm  = document.getElementById(`dz-inst-rm-${domIdx}-${instIdx}`);
+  const inp = document.getElementById(`df-inst-${domIdx}-${instIdx}`);
+  const pre = document.getElementById(`dz-inst-pre-${domIdx}-${instIdx}`);
+  if (lbl) lbl.innerHTML = 'Drop .pddl or browse';
+  if (dz)  dz.classList.remove('dz-loaded');
+  if (rm)  rm.style.display = 'none';
+  if (inp) inp.value = '';
+  if (pre) { pre.textContent = ''; pre.style.display = 'none'; }
+}
+
+// ── Instances (per domain) ────────────────────────────────────────────────────
 let ii = 0;
 function addInstance(domIdx) {
   const idx = ii++;
@@ -632,17 +818,32 @@ function addInstance(domIdx) {
   d.id = `inst-${domIdx}-${idx}`;
   d.style.cssText = 'border:1px solid #1a2800;border-radius:4px;padding:8px;margin-bottom:6px';
   d.innerHTML = `
-    <div style="display:grid;grid-template-columns:2fr .7fr .7fr 2fr 28px;gap:6px;margin-bottom:6px">
-      <input class="fi" id="in-name-${domIdx}-${idx}" type="text" placeholder="instance name" style="font-size:12px;padding:6px 8px" oninput="syncInstFile(${domIdx},${idx})" />
-      <input class="fi" id="in-n-${domIdx}-${idx}"    type="text" placeholder="n"    style="font-size:12px;padding:6px 8px" />
-      <input class="fi" id="in-k-${domIdx}-${idx}"    type="text" placeholder="k*"   style="font-size:12px;padding:6px 8px" />
-      <input class="fi" id="in-st-${domIdx}-${idx}"   type="text" placeholder="status" style="font-size:12px;padding:6px 8px" />
+    <div style="display:grid;grid-template-columns:2fr .7fr .7fr 2fr 1fr 28px;gap:6px;align-items:center;margin-bottom:6px">
+      <input class="fi" id="in-name-${domIdx}-${idx}" type="text" placeholder="instance name" style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="in-n-${domIdx}-${idx}"    type="text" placeholder="n"            style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="in-k-${domIdx}-${idx}"    type="text" placeholder="opt. cost"    style="font-size:12px;padding:6px 8px" />
+      <select class="fs" id="in-st-${domIdx}-${idx}" style="font-size:12px;padding:5px 8px">
+        <option value="unknown">unknown</option>
+        <option value="solved">solved</option>
+        <option value="optimal">optimal</option>
+        <option value="satisficing">satisficing</option>
+        <option value="unsolvable">unsolvable</option>
+        <option value="open">open</option>
+      </select>
+      <input class="fi" id="in-src-${domIdx}-${idx}" type="text" placeholder="source"        style="font-size:12px;padding:6px 8px" />
       <button type="button" class="rm-btn" onclick="document.getElementById('inst-${domIdx}-${idx}').remove()">×</button>
     </div>
-    <div style="display:grid;grid-template-columns:1.5fr 3fr;gap:6px">
-      <input class="fi" id="in-src-${domIdx}-${idx}"  type="text" placeholder="source ref" style="font-size:12px;padding:6px 8px" />
-      <input class="fi" id="in-file-${domIdx}-${idx}" type="text" placeholder="instance-01.pddl" style="font-size:12px;padding:6px 8px" />
-    </div>`;
+    <textarea class="ft" id="in-desc-${domIdx}-${idx}" rows="2" placeholder="Briefly describe this instance…" style="font-size:11px;margin-bottom:6px"></textarea>
+    <div class="drop-zone drop-zone-sm" id="dz-inst-${domIdx}-${idx}"
+         ondragover="event.preventDefault();this.classList.add('dz-over')"
+         ondragleave="this.classList.remove('dz-over')"
+         ondrop="handleInstDrop(event,${domIdx},${idx})"
+         onclick="document.getElementById('df-inst-${domIdx}-${idx}').click()">
+      <span id="dz-inst-lbl-${domIdx}-${idx}">Drop .pddl or browse</span>
+    </div>
+    <input type="file" id="df-inst-${domIdx}-${idx}" accept=".pddl" style="display:none" onchange="handleInstFile(event,${domIdx},${idx})" />
+    <button type="button" class="dz-rm" id="dz-inst-rm-${domIdx}-${idx}" onclick="removeInstFile(${domIdx},${idx})">× Remove file</button>
+    <pre id="dz-inst-pre-${domIdx}-${idx}" style="display:none;margin-top:6px;max-height:180px;overflow:auto;font-size:11px;line-height:1.5;background:#060c00;border:1px solid var(--border);border-radius:4px;padding:10px;color:var(--text);white-space:pre"></pre>`;
   container.appendChild(d);
 }
 
@@ -657,7 +858,9 @@ function getInstances(domIdx) {
       k:      val(`in-k-${domIdx}-${idx}`)   || '—',
       status: val(`in-st-${domIdx}-${idx}`)  || 'unknown',
       source: val(`in-src-${domIdx}-${idx}`),
-      file:   (() => { const f = val(`in-file-${domIdx}-${idx}`); return f ? 'instances/' + f : ''; })(),
+      file:        (() => { const iFile = instanceFiles.get(`${domIdx}-${idx}`); if (iFile) return `instances/${iFile.name}`; const n = val(`in-name-${domIdx}-${idx}`); return n ? `instances/${slugify(n)}.pddl` : ''; })(),
+      description: document.getElementById(`in-desc-${domIdx}-${idx}`)?.value?.trim() || '',
+      _fileKey: `${domIdx}-${idx}`,
     };
   }).filter(r => r.name);
 }
@@ -668,9 +871,9 @@ function getDomains() {
     const langSel = document.getElementById(`dl-${i}`).value;
     const lang = langSel === 'Other' ? (val(`dl-other-${i}`) || 'Other') : langSel;
     const title = val(`dt-${i}`);
-    return { key: slugify(title), title, lang,
+    return { key: slugify(title), title, lang, _idx: parseInt(i),
              src: val(`ds-${i}`), notes: val(`dn-${i}`), ss: val(`dss-${i}`),
-             types: getTypes(i), objects: getObjects(i), goal: val(`dg-${i}`),
+             types: getTypes(i), goal: val(`dg-${i}`),
              predicates: getPredicates(i), actions: getActions(i),
              instances: getInstances(i) };
   }).filter(d => d.title);
@@ -703,56 +906,86 @@ function refreshTypeOpts(domIdx) {
   dl.innerHTML = '<option value="object">' + getTypes(domIdx).map(t => `<option value="${t.name}">`).join('');
 }
 
-// ── Objects (per domain) ──────────────────────────────────────────────────────
-let obi = 0;
-function addObject(domIdx) {
-  const idx = obi++;
-  const container = document.getElementById(`obj-list-${domIdx}`);
-  const d = document.createElement('div');
-  d.className = 'drow'; d.id = `ob-${domIdx}-${idx}`;
-  d.innerHTML = `
-    <input class="fi" id="ob-name-${domIdx}-${idx}" type="text" placeholder="city1"    style="font-size:12px;padding:6px 8px" />
-    <input class="fi" id="ob-type-${domIdx}-${idx}" type="text" placeholder="location" list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
-    <button type="button" class="rm-btn" onclick="document.getElementById('ob-${domIdx}-${idx}').remove()">×</button>`;
-  container.appendChild(d);
-}
-function getObjects(domIdx) {
-  const container = document.getElementById(`obj-list-${domIdx}`);
-  if (!container) return [];
-  return [...container.children].map(r => {
-    const idx = r.id.replace(`ob-${domIdx}-`, '');
-    return { name: val(`ob-name-${domIdx}-${idx}`), type: val(`ob-type-${domIdx}-${idx}`) };
-  }).filter(r => r.name);
-}
-
 // ── Predicates (per domain) ───────────────────────────────────────────────────
-let pi = 0;
+let pi = 0, ppi = 0;
 function addPredicate(domIdx) {
-  const idx = pi++;
+  const predIdx = pi++;
   const container = document.getElementById(`pred-list-${domIdx}`);
   const d = document.createElement('div');
-  d.style.cssText = 'display:grid;grid-template-columns:1.2fr 1.5fr 2fr 28px;gap:6px;margin-bottom:6px';
-  d.id = `pred-${domIdx}-${idx}`;
+  d.id = `pred-${domIdx}-${predIdx}`;
+  d.style.cssText = 'border:1px solid #1a2800;border-radius:4px;padding:8px;margin-bottom:8px';
   d.innerHTML = `
-    <input class="fi" id="pn-${domIdx}-${idx}" type="text" placeholder="at"              style="font-size:12px;padding:6px 8px" />
-    <input class="fi" id="pp-${domIdx}-${idx}" type="text" placeholder="?obj - location" list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
-    <input class="fi" id="pd-${domIdx}-${idx}" type="text" placeholder="description"     style="font-size:12px;padding:6px 8px" />
-    <button type="button" class="rm-btn" onclick="document.getElementById('pred-${domIdx}-${idx}').remove()">×</button>`;
+    <div style="display:grid;grid-template-columns:1fr 2fr 28px;gap:6px;margin-bottom:6px">
+      <input class="fi" id="pn-${domIdx}-${predIdx}" type="text" placeholder="name" style="font-size:12px;padding:6px 8px" />
+      <input class="fi" id="pd-${domIdx}-${predIdx}" type="text" placeholder="description" style="font-size:12px;padding:6px 8px" />
+      <button type="button" class="rm-btn" onclick="document.getElementById('pred-${domIdx}-${predIdx}').remove()">×</button>
+    </div>
+    <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;margin-bottom:4px">parameters</div>
+    <div id="pp-list-${domIdx}-${predIdx}"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+      <button type="button" class="add-btn" style="padding:3px 10px;font-size:10px" onclick="addPredParam(${domIdx},${predIdx})">+ param</button>
+      <div>
+        <button type="button" class="add-btn" id="pr-btn-${domIdx}-${predIdx}" style="padding:3px 10px;font-size:10px" onclick="toggleReturnType(${domIdx},${predIdx})">+ return type</button>
+        <div id="pr-field-${domIdx}-${predIdx}" style="display:none;align-items:center;gap:6px">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;white-space:nowrap">→ returns</span>
+          <input class="fi" id="pr-${domIdx}-${predIdx}" type="text" placeholder="integer" list="type-opts-${domIdx}" style="font-size:12px;padding:4px 8px;width:100px" />
+          <button type="button" class="rm-btn" style="height:28px" onclick="removeReturnType(${domIdx},${predIdx})">×</button>
+        </div>
+      </div>
+    </div>`;
   container.appendChild(d);
+}
+function addPredParam(domIdx, predIdx) {
+  const paramIdx = ppi++;
+  const container = document.getElementById(`pp-list-${domIdx}-${predIdx}`);
+  const d = document.createElement('div');
+  d.className = 'drow'; d.id = `pp-${domIdx}-${predIdx}-${paramIdx}`;
+  d.innerHTML = `
+    <input class="fi" id="ppn-${domIdx}-${predIdx}-${paramIdx}" type="text" placeholder="variable name" style="font-size:12px;padding:4px 8px;flex:1" />
+    <input class="fi" id="ppt-${domIdx}-${predIdx}-${paramIdx}" type="text" placeholder="type" list="type-opts-${domIdx}" style="font-size:12px;padding:4px 8px;flex:1" />
+    <button type="button" class="rm-btn" style="height:30px" onclick="document.getElementById('pp-${domIdx}-${predIdx}-${paramIdx}').remove()">×</button>`;
+  container.appendChild(d);
+}
+function getPredParams(domIdx, predIdx) {
+  const container = document.getElementById(`pp-list-${domIdx}-${predIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const id = r.id.replace(`pp-${domIdx}-${predIdx}-`, '');
+    return { name: val(`ppn-${domIdx}-${predIdx}-${id}`), type: val(`ppt-${domIdx}-${predIdx}-${id}`) };
+  }).filter(r => r.name);
 }
 function getPredicates(domIdx) {
   const container = document.getElementById(`pred-list-${domIdx}`);
   if (!container) return [];
   return [...container.children].map(r => {
-    const idx = r.id.replace(`pred-${domIdx}-`, '');
-    const name = val(`pn-${domIdx}-${idx}`);
-    const params = val(`pp-${domIdx}-${idx}`);
-    return { name: params ? `${name}(${params})` : name, desc: val(`pd-${domIdx}-${idx}`) };
+    const predIdx = r.id.replace(`pred-${domIdx}-`, '');
+    const name = val(`pn-${domIdx}-${predIdx}`);
+    const params = getPredParams(domIdx, predIdx);
+    const returnType = val(`pr-${domIdx}-${predIdx}`) || 'bool';
+    const sig = params.length ? params.map(p => p.type ? `${p.name}: ${p.type}` : p.name).join(', ') : '';
+    const base = sig ? `${name}(${sig})` : name;
+    const fullName = returnType !== 'bool' ? `${base}: ${returnType}` : base;
+    return { name: fullName, desc: val(`pd-${domIdx}-${predIdx}`), params, returnType };
   }).filter(r => r.name);
+}
+function toggleReturnType(domIdx, predIdx) {
+  const btn   = document.getElementById(`pr-btn-${domIdx}-${predIdx}`);
+  const field = document.getElementById(`pr-field-${domIdx}-${predIdx}`);
+  if (!field) return;
+  field.style.display = 'flex';
+  if (btn) btn.style.display = 'none';
+}
+function removeReturnType(domIdx, predIdx) {
+  const btn   = document.getElementById(`pr-btn-${domIdx}-${predIdx}`);
+  const field = document.getElementById(`pr-field-${domIdx}-${predIdx}`);
+  const inp   = document.getElementById(`pr-${domIdx}-${predIdx}`);
+  if (field) field.style.display = 'none';
+  if (btn)   btn.style.display = '';
+  if (inp)   inp.value = '';
 }
 
 // ── Actions (per domain) ──────────────────────────────────────────────────────
-let aci = 0;
+let aci = 0, api_i = 0;
 function addAction(domIdx) {
   const idx = aci++;
   const container = document.getElementById(`act-list-${domIdx}`);
@@ -760,27 +993,48 @@ function addAction(domIdx) {
   d.id = `act-${domIdx}-${idx}`;
   d.style.cssText = 'border:1px solid #1a2800;border-radius:4px;padding:8px;margin-bottom:8px';
   d.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1.2fr 1.5fr 28px;gap:6px;margin-bottom:8px">
-      <input class="fi" id="an-${domIdx}-${idx}" type="text" placeholder="move"              style="font-size:12px;padding:6px 8px" />
-      <input class="fi" id="ap-${domIdx}-${idx}" type="text" placeholder="?from ?to - loc"   list="type-opts-${domIdx}" style="font-size:12px;padding:6px 8px" />
+    <div style="display:grid;grid-template-columns:1fr 2fr 28px;gap:6px;margin-bottom:8px">
+      <input class="fi" id="an-${domIdx}-${idx}" type="text" placeholder="action name"       style="font-size:12px;padding:6px 8px" />
       <input class="fi" id="ad-${domIdx}-${idx}" type="text" placeholder="short description" style="font-size:12px;padding:6px 8px" />
       <button type="button" class="rm-btn" onclick="document.getElementById('act-${domIdx}-${idx}').remove()">×</button>
     </div>
+    <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;margin-bottom:4px">parameters</div>
+    <div id="ap-list-${domIdx}-${idx}"></div>
+    <button type="button" class="add-btn" style="padding:3px 10px;font-size:10px;margin-top:2px;margin-bottom:10px" onclick="addActionParam(${domIdx},${idx})">+ param</button>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
       <div>
-        <div class="tbl-col-hdr" style="margin-bottom:4px">preconditions</div>
-        <textarea class="ft" id="apc-${domIdx}-${idx}" rows="3" placeholder="(and (at ?x ?from))" style="font-size:11px;min-height:56px"></textarea>
+        <div class="tbl-col-hdr" style="margin-bottom:4px">Preconditions</div>
+        <textarea class="ft" id="apc-${domIdx}-${idx}" rows="3" placeholder="conditions that must hold" style="font-size:11px;min-height:56px"></textarea>
       </div>
       <div>
-        <div class="tbl-col-hdr" style="margin-bottom:4px">add effects</div>
-        <textarea class="ft" id="aae-${domIdx}-${idx}" rows="3" placeholder="(at ?x ?to)" style="font-size:11px;min-height:56px"></textarea>
+        <div class="tbl-col-hdr" style="margin-bottom:4px">Add effects</div>
+        <textarea class="ft" id="aae-${domIdx}-${idx}" rows="3" placeholder="facts added after action" style="font-size:11px;min-height:56px"></textarea>
       </div>
       <div>
-        <div class="tbl-col-hdr" style="margin-bottom:4px">del effects</div>
-        <textarea class="ft" id="ade-${domIdx}-${idx}" rows="3" placeholder="(at ?x ?from)" style="font-size:11px;min-height:56px"></textarea>
+        <div class="tbl-col-hdr" style="margin-bottom:4px">Delete effects</div>
+        <textarea class="ft" id="ade-${domIdx}-${idx}" rows="3" placeholder="facts removed after action" style="font-size:11px;min-height:56px"></textarea>
       </div>
     </div>`;
   container.appendChild(d);
+}
+function addActionParam(domIdx, actIdx) {
+  const paramIdx = api_i++;
+  const container = document.getElementById(`ap-list-${domIdx}-${actIdx}`);
+  const d = document.createElement('div');
+  d.className = 'drow'; d.id = `ap-${domIdx}-${actIdx}-${paramIdx}`;
+  d.innerHTML = `
+    <input class="fi" id="apn-${domIdx}-${actIdx}-${paramIdx}" type="text" placeholder="variable name" style="font-size:12px;padding:4px 8px;flex:1" />
+    <input class="fi" id="apt-${domIdx}-${actIdx}-${paramIdx}" type="text" placeholder="type" list="type-opts-${domIdx}" style="font-size:12px;padding:4px 8px;flex:1" />
+    <button type="button" class="rm-btn" style="height:30px" onclick="document.getElementById('ap-${domIdx}-${actIdx}-${paramIdx}').remove()">×</button>`;
+  container.appendChild(d);
+}
+function getActionParams(domIdx, actIdx) {
+  const container = document.getElementById(`ap-list-${domIdx}-${actIdx}`);
+  if (!container) return [];
+  return [...container.children].map(r => {
+    const id = r.id.replace(`ap-${domIdx}-${actIdx}-`, '');
+    return { name: val(`apn-${domIdx}-${actIdx}-${id}`), type: val(`apt-${domIdx}-${actIdx}-${id}`) };
+  }).filter(r => r.name);
 }
 function getActions(domIdx) {
   const container = document.getElementById(`act-list-${domIdx}`);
@@ -788,10 +1042,12 @@ function getActions(domIdx) {
   return [...container.children].map(r => {
     const idx = r.id.replace(`act-${domIdx}-`, '');
     const name = val(`an-${domIdx}-${idx}`);
-    const params = val(`ap-${domIdx}-${idx}`);
+    const params = getActionParams(domIdx, idx);
+    const sig = params.length ? params.map(p => p.type ? `${p.name}: ${p.type}` : p.name).join(', ') : '';
     return {
-      name:   params ? `${name}(${params})` : name,
+      name:   sig ? `${name}(${sig})` : name,
       desc:   val(`ad-${domIdx}-${idx}`),
+      params,
       preconditions: document.getElementById(`apc-${domIdx}-${idx}`)?.value?.trim() || '',
       add_effects:   document.getElementById(`aae-${domIdx}-${idx}`)?.value?.trim() || '',
       del_effects:   document.getElementById(`ade-${domIdx}-${idx}`)?.value?.trim() || '',
@@ -896,6 +1152,177 @@ function refToBibtex(i) {
   }, 1800);
 }
 
+// ── Load existing problem ─────────────────────────────────────────────────────
+function clearForm() {
+  ['f-title','f-slug','f-subtitle','f-origin','f-origin-year','f-proposers'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const catOther = document.getElementById('f-cat-other');
+  if (catOther) catOther.style.display = 'none';
+  const catSel = document.getElementById('f-category');
+  if (catSel) catSel.value = 'Classical';
+  ['tags-grid','lang-grid','ipc-grid'].forEach(id => {
+    document.querySelectorAll(`#${id} input[type=checkbox]`).forEach(c => c.checked = false);
+  });
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-history').value = '';
+  document.getElementById('variants-list').innerHTML = '';
+  document.getElementById('complexity-list').innerHTML = '';
+  document.getElementById('domains-list').innerHTML = '';
+  document.getElementById('refs-list').innerHTML = '';
+  vi = 0; cxi = 0; di = 0; ii = 0; tyi = 0; pi = 0; ppi = 0; aci = 0; api_i = 0; ri = 0;
+  domainFiles.clear();
+  instanceFiles.clear();
+}
+
+function loadSelectedProblem() {
+  const sel = document.getElementById('load-prob-sel');
+  if (!sel) return;
+  if (sel.value === '') { clearForm(); addDomain(); return; }
+  loadProblem(parseInt(sel.value));
+  const msg = document.getElementById('load-ok');
+  if (msg) { msg.style.display = ''; setTimeout(() => msg.style.display = 'none', 3000); }
+}
+
+function loadProblem(probIdx) {
+  const d = PLANLIB_PROBLEMS[probIdx];
+  if (!d) return;
+  clearForm();
+  const sv = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+
+  // Step 0 — Identity
+  sv('f-title', d.title); sv('f-slug', d.slug); sv('f-subtitle', d.subtitle);
+  sv('f-origin', d.origin); sv('f-origin-year', d.origin_year); sv('f-proposers', d.proposers);
+  const catSel = document.getElementById('f-category');
+  if (catSel) {
+    if ([...catSel.options].some(o => o.value === d.category)) catSel.value = d.category;
+    else { catSel.value = 'Other'; sv('f-cat-other', d.category); document.getElementById('f-cat-other').style.display = ''; }
+  }
+
+  // Step 1 — Tags / Languages / IPC
+  const setChecks = (gridId, vals) => {
+    const set = new Set(vals || []);
+    document.querySelectorAll(`#${gridId} input[type=checkbox]`).forEach(c => {
+      if (set.has(c.value)) { c.checked = true; set.delete(c.value); }
+    });
+    set.forEach(v => {
+      const lbl = document.createElement('label'); lbl.className = 'ci';
+      lbl.innerHTML = `<input type="checkbox" value="${esc(v)}" checked><span>${esc(v)}</span>`;
+      document.getElementById(gridId).appendChild(lbl);
+    });
+  };
+  setChecks('tags-grid', d.tags); setChecks('lang-grid', d.languages); setChecks('ipc-grid', d.ipc_editions);
+
+  // Step 2 — Description & History
+  sv('f-desc', d.description); sv('f-history', d.history);
+
+  // Step 3 — Variants (hrefs applied after domains are added below)
+  (d.variants || []).forEach(v => {
+    addVariant();
+    const rows = [...document.querySelectorAll('#variants-list .drow')];
+    const lI = rows[rows.length - 1]?.id.replace('var-', '');
+    if (lI != null) sv(`vl-${lI}`, v.label);
+  });
+
+  // Step 3 — Complexity
+  (d.complexity || []).forEach(r => {
+    addComplexityRow();
+    const rows = [...document.querySelectorAll('#complexity-list .drow')];
+    const lI = rows[rows.length - 1]?.id.replace('cmp-', '');
+    if (lI != null) {
+      sv(`cp-${lI}`, r.problem); sv(`cq-${lI}`, r.qualifier); sv(`cr-${lI}`, r.result);
+      const cc = document.getElementById(`cc-${lI}`); if (cc) cc.value = r.class || 'hard';
+    }
+  });
+
+  // Step 4 — Domains
+  (d.domains || []).forEach(dom => {
+    addDomain();
+    const domCards = [...document.querySelectorAll('#domains-list .entry-card')];
+    const dI = domCards[domCards.length - 1]?.id.replace('dom-', '');
+    if (dI == null) return;
+    sv(`dt-${dI}`, dom.title); sv(`dn-${dI}`, dom.notes); sv(`ds-${dI}`, dom.source);
+    sv(`dss-${dI}`, dom.state_space); sv(`dg-${dI}`, dom.goal);
+    const langSel = document.getElementById(`dl-${dI}`);
+    if (langSel) {
+      if ([...langSel.options].some(o => o.value === dom.language)) langSel.value = dom.language;
+      else { langSel.value = 'Other'; sv(`dl-other-${dI}`, dom.language); document.getElementById(`dl-other-${dI}`).style.display = ''; }
+    }
+    (dom.types || []).forEach(t => {
+      addType(+dI);
+      const tyRows = [...document.querySelectorAll(`#type-list-${dI} .drow`)];
+      const tI = tyRows[tyRows.length - 1]?.id.replace(`ty-${dI}-`, '');
+      if (tI != null) { sv(`ty-name-${dI}-${tI}`, t.name); sv(`ty-par-${dI}-${tI}`, t.parent || 'object'); }
+    });
+    refreshTypeOpts(+dI);
+    (dom.predicates || []).forEach(p => {
+      addPredicate(+dI);
+      const pCards = [...document.querySelectorAll(`#pred-list-${dI}>div`)];
+      const pI = pCards[pCards.length - 1]?.id.replace(`pred-${dI}-`, '');
+      if (pI != null) { sv(`pn-${dI}-${pI}`, p.name); sv(`pd-${dI}-${pI}`, p.desc); }
+    });
+    (dom.actions || []).forEach(a => {
+      addAction(+dI);
+      const aCards = [...document.querySelectorAll(`#act-list-${dI}>div`)];
+      const aI = aCards[aCards.length - 1]?.id.replace(`act-${dI}-`, '');
+      if (aI != null) {
+        sv(`an-${dI}-${aI}`, a.name); sv(`ad-${dI}-${aI}`, a.desc);
+        const schema = a.schema || '';
+        const m = pat => { const x = schema.match(pat); return x ? x[1].trim() : ''; };
+        const preEl = document.getElementById(`apc-${dI}-${aI}`);
+        const addEl = document.getElementById(`aae-${dI}-${aI}`);
+        const delEl = document.getElementById(`ade-${dI}-${aI}`);
+        if (preEl) preEl.value = m(/^preconditions:\s*(.*)/m);
+        if (addEl) addEl.value = m(/^add effects:\s*(.*)/m);
+        if (delEl) delEl.value = m(/^del effects:\s*(.*)/m);
+      }
+    });
+    (d.instances || []).filter(inst => inst.domain === dom.key).forEach(inst => {
+      addInstance(+dI);
+      const iDivs = [...document.querySelectorAll(`#inst-list-${dI}>div`)];
+      const iI = iDivs[iDivs.length - 1]?.id.replace(`inst-${dI}-`, '');
+      if (iI != null) {
+        sv(`in-name-${dI}-${iI}`, inst.name); sv(`in-n-${dI}-${iI}`, inst.n);
+        sv(`in-k-${dI}-${iI}`, inst.k); sv(`in-src-${dI}-${iI}`, inst.source);
+        const stSel = document.getElementById(`in-st-${dI}-${iI}`); if (stSel) stSel.value = inst.status || 'unknown';
+        const descEl = document.getElementById(`in-desc-${dI}-${iI}`); if (descEl) descEl.value = inst.description || '';
+        if (inst._content && inst._file) setInstContent(+dI, +iI, inst._file, inst._content);
+      }
+    });
+    if (dom._content && dom._file) setDomainContent(+dI, dom._file, dom._content);
+    linkVariantToDomain(+dI);
+  });
+
+  // Apply variant hrefs now that domain options are populated
+  refreshVariantLinkOpts();
+  const varRows = [...document.querySelectorAll('#variants-list .drow')];
+  (d.variants || []).forEach((v, idx) => {
+    if (!v.href || !varRows[idx]) return;
+    const rI = varRows[idx].id.replace('var-', '');
+    const sel = document.getElementById(`vh-sel-${rI}`);
+    const urlInp = document.getElementById(`vh-url-${rI}`);
+    if (!sel) return;
+    if (v.href.startsWith('http')) {
+      sel.value = '__url__'; if (urlInp) { urlInp.value = v.href; urlInp.style.display = ''; }
+    } else if ([...sel.options].some(o => o.value === v.href)) {
+      sel.value = v.href;
+    }
+  });
+
+  // Step 5 — References
+  (d.references || []).forEach(ref => {
+    addRef();
+    const refCards = [...document.querySelectorAll('#refs-list .entry-card')];
+    const rI = refCards[refCards.length - 1]?.id.replace('ref-', '');
+    if (rI != null) {
+      sv(`rk-${rI}`, ref.key); sv(`rt-${rI}`, ref.title); sv(`ra-${rI}`, ref.authors);
+      sv(`rv-${rI}`, ref.venue); sv(`ru-${rI}`, ref.url); sv(`rn-${rI}`, ref.note);
+    }
+  });
+
+  wizGo(0);
+}
+
 // ── Markdown generators ───────────────────────────────────────────────────────
 function yamlList(arr) {
   return arr.length === 0 ? '[]' : '[' + arr.map(v => JSON.stringify(v)).join(', ') + ']';
@@ -925,7 +1352,8 @@ function genGeneral() {
   if (origin)     o += `origin: ${JSON.stringify(origin)}\n`;
   if (originYear) o += `origin_year: ${originYear}\n`;
   o += `last_updated: "${today}"\ncategory: ${category}\n`;
-  o += `tags: ${yamlList(tags)}\nlanguages: ${yamlList(langs)}\nipc_editions: ${yamlList(ipc)}\n---\n\n`;
+  o += `tags: ${yamlList(tags)}\nlanguages: ${yamlList(langs)}\nipc_editions: ${yamlList(ipc)}\n`;
+  o += `---\n\n`;
   o += `## Description\n\n${desc || '<!-- TODO -->'}\n\n`;
   if (history) o += `## History\n\n${history}\n\n`;
   if (variants.length) {
@@ -973,11 +1401,6 @@ function genDomain(d) {
     d.types.forEach(t => { o += `| ${t.name} | ${t.parent || 'object'} |\n`; });
     o += '\n';
   }
-  if (d.objects && d.objects.length) {
-    o += `## Objects\n\n| name | type |\n|---|---|\n`;
-    d.objects.forEach(obj => { o += `| ${obj.name} | ${obj.type || ''} |\n`; });
-    o += '\n';
-  }
   o += `## Predicates\n\n| name | desc |\n|---|---|\n`;
   if (d.predicates && d.predicates.length) {
     d.predicates.forEach(p => { o += `| ${p.name} | ${p.desc || ''} |\n`; });
@@ -998,21 +1421,181 @@ function genDomain(d) {
     o += `## Actions\n\n#### action(?x - type) — TODO: short description\n\`\`\`\npreconditions: TODO\nadd effects:   TODO\ndel effects:   TODO\n\`\`\`\n\n`;
   }
   o += d.goal ? `## Goal\n\n${d.goal}\n\n` : `## Goal\n\nTODO: describe the goal condition.\n\n`;
-  o += `## Instances\n\n| name | n | k* | status | source | file |\n|---|---|---|---|---|---|\n`;
+  o += `## Instances\n\n| name | n | opt. cost | status | source | file | description |\n|---|---|---|---|---|---|---|\n`;
   if (d.instances && d.instances.length) {
     d.instances.forEach(inst => {
-      o += `| ${inst.name || 'instance-01'} | ${inst.n || '—'} | ${inst.k || '—'} | ${inst.status || 'unknown'} | ${inst.source || ''} | ${inst.file || ''} |\n`;
+      o += `| ${inst.name || 'instance-01'} | ${inst.n || '—'} | ${inst.k || '—'} | ${inst.status || 'unknown'} | ${inst.source || ''} | ${inst.file || ''} | ${inst.description || ''} |\n`;
     });
   } else {
-    o += `| instance-01 | — | — | unknown | | instances/instance-01.pddl |\n`;
+    o += `| instance-01 | — | — | unknown | | instances/instance-01.pddl | |\n`;
   }
   return o.trimEnd() + '\n';
+}
+
+// ── Domain/instance file generators ──────────────────────────────────────────
+function pddlReqs(lang) {
+  const l = (lang || '').toLowerCase();
+  if (l.includes('1.2'))   return ':strips';
+  if (l.includes('2.1'))   return ':strips :typing';
+  if (l.includes('2.2'))   return ':strips :typing :derived-predicates';
+  if (l.includes('3.0'))   return ':strips :typing :preferences :constraints';
+  if (l.includes('3.1'))   return ':strips :typing :preferences :constraints :object-fluents';
+  if (l.includes('ppddl')) return ':strips :probabilistic-effects';
+  if (l.includes('hddl'))  return ':strips :hierarchy :typing';
+  return ':strips :typing';
+}
+
+function cmtChar(lang) {
+  return (lang || '').toLowerCase().includes('rddl') ? '//' : ';';
+}
+
+function genDomainPddl(d) {
+  const l   = (d.lang || '').toLowerCase();
+  const c   = cmtChar(d.lang);
+  const bar = `${c} ${'─'.repeat(58)}`;
+
+  // ── Comment header pre-filled with user's data ─────────────────────────────
+  let hdr = `${bar}\n${c} Domain:   ${d.key}\n${c} Language: ${d.lang}\n${c}\n`;
+  hdr += `${c} TODO: complete the formal definition below.\n`;
+  hdr += `${c}       The sections below summarise what you entered in the form.\n`;
+  hdr += `${bar}\n`;
+
+  if (d.types && d.types.length) {
+    hdr += `${c}\n${c} TYPES\n`;
+    d.types.forEach(t => {
+      hdr += `${c}   ${t.name}` + (t.parent && t.parent !== 'object' ? `  →  ${t.parent}` : '') + '\n';
+    });
+  }
+
+  if (d.predicates && d.predicates.length) {
+    const pad = Math.max(...d.predicates.map(p => p.name.length), 0);
+    hdr += `${c}\n${c} PREDICATES\n`;
+    d.predicates.forEach(p => {
+      const retNote = (p.returnType && p.returnType !== 'bool') ? ` [→ ${p.returnType}]` : '';
+      hdr += `${c}   ${p.name.padEnd(pad)}${retNote}` + (p.desc ? `  —  ${p.desc}` : '') + '\n';
+    });
+  }
+
+  if (d.actions && d.actions.length) {
+    hdr += `${c}\n${c} ACTIONS\n`;
+    d.actions.forEach(a => {
+      hdr += `${c}   ${a.name}` + (a.desc ? `  —  ${a.desc}` : '') + '\n';
+      if (a.preconditions) hdr += `${c}     Preconditions:  ${a.preconditions}\n`;
+      if (a.add_effects)   hdr += `${c}     Add effects:    ${a.add_effects}\n`;
+      if (a.del_effects)   hdr += `${c}     Delete effects: ${a.del_effects}\n`;
+    });
+  }
+
+  hdr += `${bar}\n`;
+
+  // Only generate formal syntax for PDDL variants (PDDL x.y, PPDDL)
+  if (!l.includes('pddl')) {
+    return hdr + `\n${c} TODO: write the formal domain definition in ${d.lang}\n`;
+  }
+
+  // ── PDDL family structural stub ────────────────────────────────────────────
+  let s = `\n(define (domain ${d.key})\n  (:requirements ${pddlReqs(d.lang)})\n`;
+
+  if (d.types && d.types.length) {
+    s += `\n  (:types\n`;
+    const byParent = {};
+    d.types.forEach(t => {
+      (byParent[t.parent || 'object'] = byParent[t.parent || 'object'] || []).push(t.name);
+    });
+    Object.entries(byParent).forEach(([p, ns]) => { s += `    ${ns.join(' ')} - ${p}\n`; });
+    s += `  )\n`;
+  }
+
+  const boolPreds = (d.predicates || []).filter(p => !p.returnType || p.returnType === 'bool');
+  const funcPreds = (d.predicates || []).filter(p => p.returnType && p.returnType !== 'bool');
+
+  s += `\n  (:predicates\n`;
+  if (boolPreds.length) {
+    boolPreds.forEach(p => {
+      const pname = p.name.split('(')[0];
+      const ps = (p.params || []).length
+        ? ' ' + p.params.map(pp => pp.type ? `?${pp.name} - ${pp.type}` : `?${pp.name}`).join(' ')
+        : '';
+      if (p.desc) s += `    ; ${p.desc}\n`;
+      s += `    (${pname}${ps})\n`;
+    });
+  } else {
+    s += `    ; TODO: add predicates\n`;
+  }
+  s += `  )\n`;
+
+  if (funcPreds.length) {
+    s += `\n  (:functions\n`;
+    funcPreds.forEach(p => {
+      const pname = p.name.split('(')[0];
+      const ps = (p.params || []).length
+        ? ' ' + p.params.map(pp => pp.type ? `?${pp.name} - ${pp.type}` : `?${pp.name}`).join(' ')
+        : '';
+      if (p.desc) s += `    ; ${p.desc}\n`;
+      s += `    (${pname}${ps})` + (p.returnType !== 'number' ? ` ; → ${p.returnType}\n` : '\n');
+    });
+    s += `  )\n`;
+  }
+
+  if (d.actions && d.actions.length) {
+    d.actions.forEach(a => {
+      const aname = a.name.split('(')[0];
+      const ps = (a.params || []).length
+        ? a.params.map(p => p.type ? `?${p.name} - ${p.type}` : `?${p.name}`).join(' ')
+        : '';
+      s += `\n`;
+      if (a.desc) s += `  ; ${a.desc}\n`;
+      s += `  (:action ${aname}\n    :parameters (${ps})\n    :precondition (and\n`;
+      if (a.preconditions && a.preconditions !== 'TODO') {
+        s += `      ; ${a.preconditions}\n      ; TODO: translate to formal syntax\n`;
+      } else {
+        s += `      ; TODO\n`;
+      }
+      s += `    )\n    :effect (and\n`;
+      if (a.add_effects && a.add_effects !== 'TODO')
+        s += `      ; + ${a.add_effects}\n      ; TODO: translate to formal syntax\n`;
+      if (a.del_effects && a.del_effects !== 'TODO')
+        s += `      ; - ${a.del_effects}  →  (not ...)\n      ; TODO: translate to formal syntax\n`;
+      if ((!a.add_effects || a.add_effects === 'TODO') && (!a.del_effects || a.del_effects === 'TODO'))
+        s += `      ; TODO\n`;
+      s += `    )\n  )\n`;
+    });
+  } else {
+    s += `\n  ; TODO: add actions\n`;
+  }
+
+  return hdr + s + `)\n`;
+}
+
+function genInstancePddl(domain, inst) {
+  const name  = (typeof inst === 'string') ? inst : (inst.name || 'instance');
+  const slug  = slugify(name);
+  const c     = cmtChar(domain.lang);
+  const bar   = `${c} ${'─'.repeat(58)}`;
+
+  let hdr = `${bar}\n${c} Instance: ${name}\n${c} Domain:   ${domain.key}\n`;
+  if (typeof inst === 'object') {
+    if (inst.n     && inst.n     !== '—') hdr += `${c} n:        ${inst.n}\n`;
+    if (inst.k     && inst.k     !== '—') hdr += `${c} opt. cost: ${inst.k}\n`;
+    if (inst.status && inst.status !== 'unknown') hdr += `${c} Status:   ${inst.status}\n`;
+    if (inst.source)                              hdr += `${c} Source:   ${inst.source}\n`;
+  }
+  if (inst.description) hdr += `${c} ${inst.description}\n`;
+  hdr += `${c}\n${c} TODO: fill in the objects, initial state, and goal.\n${bar}\n`;
+
+  // Only generate formal syntax for PDDL variants
+  const dl = (domain.lang || '').toLowerCase();
+  if (!dl.includes('pddl')) {
+    return hdr + `\n${c} TODO: write the formal instance definition in ${domain.lang}\n`;
+  }
+
+  return hdr + `\n(define (problem ${slug})\n  (:domain ${domain.key})\n\n  (:objects\n    ; TODO: list objects\n  )\n\n  (:init\n    ; TODO: list the facts that hold in the initial state\n  )\n\n  (:goal (and\n    ; TODO: goal condition\n  ))\n)\n`;
 }
 
 // ── Render output ─────────────────────────────────────────────────────────────
 function renderOutput() {
   const slug = val('f-slug') || 'slug';
-  document.getElementById('folder-hint').textContent = `problems/probNNN-${slug}/`;
+  document.getElementById('folder-hint').textContent = `problems/${slug}/`;
 
   const area = document.getElementById('output-area');
   area.innerHTML = '';
@@ -1035,7 +1618,19 @@ function renderOutput() {
   mkBlock('general.md', genGeneral());
   const refsMd = genReferences();
   if (refsMd) mkBlock('references.md', refsMd);
-  getDomains().forEach(d => mkBlock(`domains/${d.key}/domain.md`, genDomain(d)));
+  getDomains().forEach(d => {
+    mkBlock(`domains/${d.key}/domain.md`, genDomain(d));
+    const df = domainFiles.get(d._idx);
+    mkBlock(`domains/${d.key}/domain.pddl`, df ? df.content : genDomainPddl(d));
+    d.instances.forEach(inst => {
+      const iFile = instanceFiles.get(inst._fileKey);
+      if (iFile) {
+        mkBlock(`domains/${d.key}/instances/${iFile.name}`, iFile.content);
+      } else if (inst.name) {
+        mkBlock(`domains/${d.key}/instances/${slugify(inst.name)}.pddl`, genInstancePddl(d, inst));
+      }
+    });
+  });
 
   if (!area.children.length)
     area.innerHTML = '<p style="color:var(--muted);font-size:13px">Fill in at least a title and one domain, then click Regenerate.</p>';
@@ -1046,10 +1641,11 @@ async function downloadZip() {
   const blocks = document.querySelectorAll('#output-area .out-file');
   if (!blocks.length) { renderOutput(); return; }
 
+  const slug = val('f-slug') || 'problem';
   const zip = new JSZip();
   blocks.forEach(b => {
     zip.file(
-      b.querySelector('.out-path').textContent.trim(),
+      slug + '/' + b.querySelector('.out-path').textContent.trim(),
       b.querySelector('pre').textContent
     );
   });
@@ -1065,13 +1661,27 @@ async function downloadZip() {
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function togglePre(preId, btn) {
+  const pre = document.getElementById(preId);
+  if (!pre) return;
+  const open = pre.style.display === 'none';
+  pre.style.display = open ? '' : 'none';
+  btn.textContent = open ? '▴ hide' : '▾ view';
+}
 function dlText(filename, content) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
   a.download = filename; a.click(); URL.revokeObjectURL(a.href);
 }
 
-document.addEventListener('DOMContentLoaded', () => { addDomain(); });
+document.addEventListener('DOMContentLoaded', () => {
+  addDomain();
+  const title = new URLSearchParams(window.location.search).get('title');
+  if (title) {
+    const el = document.getElementById('f-title');
+    if (el) { el.value = title; el.dispatchEvent(new Event('input')); }
+  }
+});
 </script>
 </body>
 </html>

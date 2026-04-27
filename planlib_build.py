@@ -2,17 +2,20 @@
 """planlib_build.py — PlanLib build tool.
 
 Commands:
-    build   Generate HTML pages from problem directories.
-    serve   Serve the output on a local HTTP server (clean URLs, no file://).
-    new     Scaffold a new empty problem directory.
+    build        Generate HTML pages from problem directories.
+    serve        Serve the output on a local HTTP server (clean URLs, no file://).
+    new          Scaffold a new empty problem directory.
+    assign-ids   Assign stable probNNN IDs to newly submitted problems (editor use).
 
 Examples:
     python planlib_build.py build --all
     python planlib_build.py serve
     python planlib_build.py serve --port 3000
     python planlib_build.py build problems/prob001-blocksworld/
-    python planlib_build.py new prob005-mystery
-    python planlib_build.py new prob005-mystery --domains base typed
+    python planlib_build.py new mystery
+    python planlib_build.py new mystery --domains base typed
+    python planlib_build.py assign-ids
+    python planlib_build.py assign-ids --rename
 
 Problem directory structure:
     prob001-blocksworld/
@@ -35,6 +38,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
+from urllib.parse import quote_plus
 
 try:
     from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -115,6 +119,19 @@ def _split_sections(body: str, marker: str = '##') -> dict[str, str]:
     return sections
 
 
+def _parse_types_table(text: str) -> list[dict]:
+    types = []
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith('|---') or re.match(r'^\| *name', ln, re.I):
+            continue
+        if ln.startswith('|'):
+            cells = [c.strip() for c in ln.strip('|').split('|')]
+            if len(cells) >= 1 and cells[0]:
+                types.append({'name': cells[0], 'parent': cells[1] if len(cells) > 1 and cells[1] else 'object'})
+    return types
+
+
 def _parse_predicate_table(text: str) -> list[dict]:
     predicates = []
     for ln in text.splitlines():
@@ -135,7 +152,7 @@ def _parse_actions(text: str) -> list[dict]:
             continue
         bl    = block.splitlines()
         hdr   = bl[0].strip()
-        parts = re.split(r' [—–-] ', hdr, maxsplit=1)
+        parts = re.split(r' [—–] ', hdr, maxsplit=1)
         name  = parts[0].strip()
         desc  = parts[1].strip() if len(parts) > 1 else ''
         code  = re.search(r'```[^\n]*\n(.*?)```', block, re.DOTALL)
@@ -170,7 +187,7 @@ def parse_domain_md(domain_md_path: Path, key: str) -> tuple[dict, list[dict]]:
     predicates = _parse_predicate_table(sub.get('Predicates', ''))
     actions    = _parse_actions(sub.get('Actions', ''))
 
-    # Instances table: | name | n | k* | status | source | file |
+    # Instances table: | name | n | opt. cost | status | source | file | description |
     inst_rows: list[dict] = []
     for ln in sub.get('Instances', '').splitlines():
         ln = ln.strip()
@@ -185,24 +202,26 @@ def parse_domain_md(domain_md_path: Path, key: str) -> tuple[dict, list[dict]]:
         status = _cell(cells, 3)
         src    = _cell(cells, 4)
         fpath  = _cell(cells, 5)
+        desc   = _cell(cells, 6)
 
         def _int_or(s: str):
             return int(s) if s.lstrip('-').isdigit() else (None if s in ('', '-') else s)
 
         inst_rows.append({
-            'name':       name,
-            'n':          _int_or(n_raw),
-            'optimal':    _int_or(k_raw),
-            'status':     status,
-            'source_ref': src or None,
-            'language':   'PDDL',
-            'domain':     key,        # filled in by caller
-            'file':       fpath or None,
+            'name':        name,
+            'n':           _int_or(n_raw),
+            'optimal':     _int_or(k_raw),
+            'status':      status,
+            'source_ref':  src or None,
+            'language':    'PDDL',
+            'domain':      key,
+            'file':        fpath or None,
+            'description': desc or '',
         })
 
     viewpoint = {
         'state_space': sub.get('State Space', ''),
-        'types':       sub.get('Types', ''),
+        'types':       _parse_types_table(sub.get('Types', '')),
         'objects':     sub.get('Objects', ''),
         'predicates':  predicates,
         'actions':     actions,
@@ -400,7 +419,7 @@ def parse_problem_dir(prob_dir: Path) -> dict:
         vp = domain_entries[0]['viewpoint']
         problem['formal'].update({
             'state_space': vp['state_space'],
-            'types':       vp.get('types', ''),
+            'types':       vp.get('types', []),
             'objects':     vp['objects'],
             'predicates':  vp['predicates'],
             'actions':     vp['actions'],
@@ -633,17 +652,104 @@ def make_env(template_dir: Path):
     )
     env.filters['md_body']   = _md_body
     env.filters['tag_class'] = _tag_class
+    env.filters['urlencode'] = quote_plus
     return env
 
 
-def build_contribute(output_dir: Path, env) -> None:
+def _serialize_problem_for_form(p: dict) -> dict:
+    """Minimal serialisation of a parsed problem for the contribute form's load feature."""
+    sections = p.get('description', {}).get('sections', [])
+    desc_body    = next((s.get('body', '') for s in sections if s.get('heading') == 'Description'), '')
+    history_body = next((s.get('body', '') for s in sections if s.get('heading') == 'History'), '')
+    variants = [
+        {'label': v.get('label', ''), 'href': v.get('href') or ''}
+        for sec in sections for v in sec.get('variants', [])
+    ]
+    domains = []
+    for d in p.get('domains', {}).get('entries', []):
+        vp = d.get('viewpoint', {})
+        fpath = d.get('file', '')
+        domains.append({
+            'key':         d.get('key', ''),
+            'title':       d.get('title', ''),
+            'language':    d.get('language', 'PDDL 2.1'),
+            'notes':       d.get('notes', '') or '',
+            'source':      d.get('source_ref', '') or '',
+            'state_space': vp.get('state_space', '') or '',
+            'types':       vp.get('types', []),
+            'predicates':  vp.get('predicates', []),
+            'actions':     vp.get('actions', []),
+            'goal':        vp.get('goal', '') or '',
+            '_file':       fpath.split('/')[-1] if fpath else '',
+            '_content':    d.get('_content', '') or '',
+        })
+    instances = []
+    for row in p.get('instances', {}).get('rows', []):
+        n   = row.get('n')
+        opt = row.get('optimal')
+        rfile = row.get('file', '') or ''
+        instances.append({
+            'name':        row.get('name', ''),
+            'n':           '' if n   is None else str(n),
+            'k':           '' if opt is None else str(opt),
+            'status':      row.get('status', 'unknown') or 'unknown',
+            'source':      row.get('source_ref', '') or '',
+            'description': row.get('description', '') or '',
+            'domain':      row.get('domain', ''),
+            '_file':       rfile.split('/')[-1] if rfile else '',
+            '_content':    row.get('_content', '') or '',
+        })
+    refs = [
+        {
+            'key':     ref.get('key', ''),
+            'title':   ref.get('title', ''),
+            'authors': ref.get('authors', '') or '',
+            'venue':   ref.get('venue', '') or '',
+            'url':     ref.get('url', '') or '',
+            'note':    ref.get('note', '') or '',
+        }
+        for ref in p.get('references', [])
+    ]
+    return {
+        'slug':         p.get('slug', ''),
+        'title':        p.get('title', ''),
+        'subtitle':     p.get('subtitle', '') or '',
+        'category':     p.get('category', 'Classical') or 'Classical',
+        'origin':       p.get('origin', '') or '',
+        'origin_year':  str(p.get('origin_year', '') or ''),
+        'proposers':    ', '.join(str(x) for x in p.get('proposers', [])),
+        'tags':         p.get('tags', []),
+        'languages':    p.get('languages', []),
+        'ipc_editions': [str(e) for e in p.get('ipc_editions', [])],
+        'description':  desc_body,
+        'history':      history_body,
+        'variants':     variants,
+        'complexity':   p.get('formal', {}).get('complexity', []),
+        'domains':      domains,
+        'instances':    instances,
+        'references':   refs,
+    }
+
+
+def build_contribute(output_dir: Path, env, problems: list[dict] | None = None) -> None:
     """Render the contribute/submit form page."""
+    problems_data = [_serialize_problem_for_form(p) for p in (problems or [])]
     template = env.get_template(CONTRIBUTE_TEMPLATE)
-    html = template.render(base='../')
+    html = template.render(base='../', problems_data=problems_data)
     out_dir = output_dir / 'contribute'
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / 'index.html').write_text(html, encoding='utf-8')
     print('  OK  contribute/index.html')
+
+
+def build_not_yet(output_dir: Path, env) -> None:
+    """Render the generic 'not yet contributed' page at problems/not-yet/."""
+    template = env.get_template('stub.html.j2')
+    html = template.render(base='../../')
+    out_dir = output_dir / 'problems' / 'not-yet'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / 'index.html').write_text(html, encoding='utf-8')
+    print('  OK  problems/not-yet/index.html')
 
 
 def copy_static(static_src: Path, output_dir: Path) -> None:
@@ -679,12 +785,14 @@ def _set_fm_field(path: Path, key: str, value: str) -> None:
     path.write_text(f'---\n{fm_block}\n---\n{rest}', encoding='utf-8')
 
 
-def assign_ids(prob_dirs: list[Path]) -> None:
+def assign_ids(prob_dirs: list[Path], rename: bool = False) -> None:
     """Assign stable probNNN IDs to any problems that do not have one yet.
 
     Problems already carrying a valid probNNN id are left untouched.
     New IDs are assigned in alphabetical order of the directory name and
     written back into general.md so they are stable across all future builds.
+
+    If rename=True the directory is also renamed from <slug> to probNNN-<slug>.
     """
     existing_nums: set[int] = set()
     unassigned:    list[Path] = []
@@ -712,7 +820,12 @@ def assign_ids(prob_dirs: list[Path]) -> None:
         existing_nums.add(next_n)
         next_n += 1
         _set_fm_field(prob_dir / 'general.md', 'id', new_id)
-        print(f"  assigned  {new_id}  ->  {prob_dir.name}/")
+        if rename and not prob_dir.name.startswith('prob'):
+            new_dir = prob_dir.parent / f'{new_id}-{prob_dir.name}'
+            prob_dir.rename(new_dir)
+            print(f"  assigned  {new_id}  {prob_dir.name}/  ->  {new_dir.name}/")
+        else:
+            print(f"  assigned  {new_id}  ->  {prob_dir.name}/")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -931,6 +1044,17 @@ def main():
     new_p.add_argument('--problems-dir', default=str(DEFAULT_PROBLEMS),
                        help=f'Parent directory for new problem (default: {DEFAULT_PROBLEMS})')
 
+    # ── assign-ids ────────────────────────────────────────────────────────────
+    aid_p = subs.add_parser(
+        'assign-ids',
+        help='Assign stable probNNN IDs to newly submitted problems (editor use).',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    aid_p.add_argument('--problems-dir', default=str(DEFAULT_PROBLEMS),
+                       help=f'Directory containing problem subdirs (default: {DEFAULT_PROBLEMS})')
+    aid_p.add_argument('--rename', action='store_true',
+                       help='Also rename each directory from <slug> to probNNN-<slug>')
+
     args = p.parse_args()
 
     # ── dispatch: build ───────────────────────────────────────────────────────
@@ -1104,7 +1228,10 @@ def main():
                 )
 
             # ── Contribute form ───────────────────────────────────────────────
-            build_contribute(output_dir, env)
+            build_contribute(output_dir, env, built_problems)
+
+            # ── Generic stub page for unlinked variants ───────────────────────
+            build_not_yet(output_dir, env)
         else:
             prob_dir = Path(args.prob_dir)
             if not prob_dir.is_dir():
@@ -1137,6 +1264,21 @@ def main():
     elif args.command == 'new':
         prob_dir = Path(args.problems_dir) / args.name
         make_problem(prob_dir, args.domains)
+
+    # ── dispatch: assign-ids ──────────────────────────────────────────────────
+    elif args.command == 'assign-ids':
+        problems_dir = Path(args.problems_dir)
+        if not problems_dir.is_dir():
+            sys.exit(f"Problems directory not found: {problems_dir}")
+        prob_dirs = sorted(
+            d for d in problems_dir.iterdir()
+            if d.is_dir() and (d / 'general.md').exists()
+        )
+        if not prob_dirs:
+            sys.exit(f"No problem directories found in {problems_dir}")
+        print(f"Scanning {len(prob_dirs)} problem(s) in {problems_dir}/\n")
+        assign_ids(prob_dirs, rename=args.rename)
+        print('\nDone.')
 
 
 if __name__ == '__main__':

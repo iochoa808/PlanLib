@@ -39,6 +39,8 @@ p { margin-bottom:14px; color:#ccc; line-height:1.85; }
 .variant-chip { background:#1a1a2e; border:1px solid #2a2a50; color:#8888cc; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:4px 12px; border-radius:2px; text-decoration:none; display:inline-block; }
 a.variant-chip { cursor:pointer; transition:background .15s, border-color .15s, color .15s; }
 a.variant-chip:hover { background:#252540; border-color:#5050a0; color:#aaaaee; }
+a.variant-chip-stub { border-style:dashed; opacity:.65; }
+a.variant-chip-stub:hover { opacity:1; }
 
 /* ── Complexity table ── */
 table.complexity-table { border-collapse:collapse; width:100%; margin:12px 0 4px; font-size:13px; }
@@ -96,9 +98,11 @@ table.inst { border-collapse:collapse; width:100%; margin:10px 0; font-size:12px
 table.inst th { text-align:left; padding:7px 10px; font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); }
 table.inst td { padding:8px 10px; border-bottom:1px solid #1a1a1a; color:#ccc; }
 table.inst tr:last-child td { border-bottom:none; }
-table.inst tr:hover td { background:#161616; }
+table.inst tr.inst-row:hover td { background:#0f1a00; }
+table.inst tr:not(.inst-row):hover td { background:#161616; }
 td.opt { color:var(--accent); font-weight:600; }
 td.status { color:#aaa; font-size:11px; }
+.inst-row-chev { color:var(--muted); font-size:10px; margin-left:4px; transition:transform .2s; display:inline-block; }
 
 /* ── Ref link ── */
 .ref-link { font-size:11px; font-weight:600; color:var(--accent); letter-spacing:.05em; border-bottom:1px dashed #3a4a10; padding-bottom:1px; cursor:pointer; transition:color .15s,border-color .15s; }
@@ -114,6 +118,14 @@ td.status { color:#aaa; font-size:11px; }
 .ref-venue { color:var(--muted); font-size:12px; }
 .ref-note { color:#555; font-size:11px; margin-top:3px; font-style:italic; }
 .bibtex-block { background:#111; border:1px solid var(--border); border-radius:4px; padding:16px 20px; font-size:11.5px; color:#aaa; overflow-x:auto; margin-top:14px; white-space:pre; font-family:var(--mono); }
+
+/* ── PDDL syntax highlighting ── */
+pre.pddl .ph-c { color:#4a5a38; font-style:italic; }
+pre.pddl .ph-v { color:var(--accent2); }
+pre.pddl .ph-s { color:var(--accent); }
+pre.pddl .ph-k { color:#c8a2e8; }
+pre.pddl .ph-n { color:#e8a96a; }
+pre.pddl .ph-p { color:#555; }
 
 @media(max-width:700px) {
   .hero { grid-template-columns:1fr; }
